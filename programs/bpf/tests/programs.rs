@@ -3,26 +3,62 @@
 #[macro_use]
 extern crate solana_bpf_loader_program;
 
+#[cfg(feature = "bpf_rust")]
 use {
     itertools::izip,
-    log::{log_enabled, trace, Level::Trace},
     solana_account_decoder::parse_bpf_loader::{
         parse_bpf_upgradeable_loader, BpfUpgradeableLoaderAccountType,
     },
+    solana_bpf_rust_invoke::instructions::*,
+    solana_bpf_rust_realloc::instructions::*,
+    solana_bpf_rust_realloc_invoke::instructions::*,
+    solana_ledger::token_balances::collect_token_balances,
+    solana_program_runtime::{compute_budget::ComputeBudget, timings::ExecuteTimings},
+    solana_runtime::{
+        bank::{
+            DurableNonceFee, TransactionBalancesSet, TransactionExecutionDetails,
+            TransactionExecutionResult, TransactionResults,
+        },
+        loader_utils::{
+            load_and_finalize_deprecated_program, load_upgradeable_buffer,
+            load_upgradeable_program, set_upgrade_authority, upgrade_program,
+        },
+    },
+    solana_sdk::{
+        account::{ReadableAccount, WritableAccount},
+        account_utils::StateMut,
+        bpf_loader_upgradeable,
+        clock::MAX_PROCESSING_AGE,
+        compute_budget::ComputeBudgetInstruction,
+        entrypoint::MAX_PERMITTED_DATA_INCREASE,
+        feature_set::FeatureSet,
+        fee::FeeStructure,
+        fee_calculator::FeeRateGovernor,
+        instruction::CompiledInstruction,
+        loader_instruction,
+        message::{v0::LoadedAddresses, SanitizedMessage},
+        rent::Rent,
+        signature::keypair_from_seed,
+        stake,
+        system_instruction::{self, MAX_PERMITTED_DATA_LENGTH},
+        sysvar::{self, clock, rent},
+        transaction::VersionedTransaction,
+    },
+    solana_transaction_status::{
+        ConfirmedTransactionWithStatusMeta, InnerInstructions, TransactionStatusMeta,
+        TransactionWithStatusMeta, VersionedTransactionWithStatusMeta,
+    },
+    std::{collections::HashMap, env, fs::File, io::Read, path::PathBuf, str::FromStr},
+};
+use {
+    log::{log_enabled, trace, Level::Trace},
     solana_bpf_loader_program::{
         create_vm,
         serialization::{deserialize_parameters, serialize_parameters},
         syscalls::register_syscalls,
         BpfError, ThisInstructionMeter,
     },
-    solana_bpf_rust_invoke::instructions::*,
-    solana_bpf_rust_realloc::instructions::*,
-    solana_bpf_rust_realloc_invoke::instructions::*,
-    solana_ledger::token_balances::collect_token_balances,
-    solana_program_runtime::{
-        compute_budget::ComputeBudget, invoke_context::with_mock_invoke_context,
-        timings::ExecuteTimings,
-    },
+    solana_program_runtime::invoke_context::with_mock_invoke_context,
     solana_rbpf::{
         elf::Executable,
         static_analysis::Analysis,
@@ -30,46 +66,24 @@ use {
         vm::{Config, Tracer, VerifiedExecutable},
     },
     solana_runtime::{
-        bank::{
-            Bank, DurableNonceFee, TransactionBalancesSet, TransactionExecutionDetails,
-            TransactionExecutionResult, TransactionResults,
-        },
+        bank::Bank,
         bank_client::BankClient,
         genesis_utils::{create_genesis_config, GenesisConfigInfo},
-        loader_utils::{
-            create_deprecated_program, load_and_finalize_deprecated_program,
-            load_program_from_file, load_upgradeable_buffer, load_upgradeable_program,
-            set_upgrade_authority, upgrade_program,
-        },
+        loader_utils::{create_deprecated_program, load_program_from_file},
     },
     solana_sdk::{
-        account::{AccountSharedData, ReadableAccount, WritableAccount},
-        account_utils::StateMut,
-        bpf_loader, bpf_loader_deprecated, bpf_loader_upgradeable,
+        account::AccountSharedData,
+        bpf_loader, bpf_loader_deprecated,
         client::SyncClient,
-        clock::MAX_PROCESSING_AGE,
-        compute_budget::ComputeBudgetInstruction,
-        entrypoint::{MAX_PERMITTED_DATA_INCREASE, SUCCESS},
-        feature_set::FeatureSet,
-        fee::FeeStructure,
-        fee_calculator::FeeRateGovernor,
-        instruction::{AccountMeta, CompiledInstruction, Instruction, InstructionError},
-        loader_instruction,
-        message::{v0::LoadedAddresses, Message, SanitizedMessage},
+        entrypoint::SUCCESS,
+        instruction::{AccountMeta, Instruction, InstructionError},
+        message::Message,
         pubkey::Pubkey,
-        rent::Rent,
-        signature::{keypair_from_seed, Keypair, Signer},
-        stake,
-        system_instruction::{self, MAX_PERMITTED_DATA_LENGTH},
+        signature::{Keypair, Signer},
         system_program,
-        sysvar::{self, clock, rent},
-        transaction::{SanitizedTransaction, Transaction, TransactionError, VersionedTransaction},
+        transaction::{SanitizedTransaction, Transaction, TransactionError},
     },
-    solana_transaction_status::{
-        ConfirmedTransactionWithStatusMeta, InnerInstructions, TransactionStatusMeta,
-        TransactionWithStatusMeta, VersionedTransactionWithStatusMeta,
-    },
-    std::{collections::HashMap, str::FromStr, sync::Arc},
+    std::sync::Arc,
 };
 
 fn run_program(name: &str) -> u64 {
@@ -213,6 +227,7 @@ fn run_program(name: &str) -> u64 {
     })
 }
 
+#[cfg(feature = "bpf_rust")]
 fn process_transaction_and_record_inner(
     bank: &Bank,
     tx: Transaction,
@@ -255,6 +270,7 @@ fn process_transaction_and_record_inner(
     (result, inner_instructions, log_messages)
 }
 
+#[cfg(feature = "bpf_rust")]
 fn execute_transactions(
     bank: &Bank,
     txs: Vec<Transaction>,
@@ -503,6 +519,7 @@ fn test_program_bpf_loader_deprecated() {
 }
 
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_sol_alloc_free_no_longer_deployable() {
     solana_logger::setup();
 
@@ -588,6 +605,7 @@ fn test_sol_alloc_free_no_longer_deployable() {
 }
 
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_duplicate_accounts() {
     solana_logger::setup();
 
@@ -689,6 +707,7 @@ fn test_program_bpf_duplicate_accounts() {
 }
 
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_error_handling() {
     solana_logger::setup();
 
@@ -847,6 +866,7 @@ fn test_return_data_and_log_data_syscall() {
 }
 
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_invoke_sanity() {
     solana_logger::setup();
 
@@ -1269,8 +1289,8 @@ fn test_program_bpf_invoke_sanity() {
     }
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_program_id_spoofing() {
     let GenesisConfigInfo {
         genesis_config,
@@ -1322,8 +1342,8 @@ fn test_program_bpf_program_id_spoofing() {
     assert_eq!(0, bank.get_balance(&to_pubkey));
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_caller_has_access_to_cpi_program() {
     let GenesisConfigInfo {
         genesis_config,
@@ -1360,8 +1380,8 @@ fn test_program_bpf_caller_has_access_to_cpi_program() {
     );
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_ro_modify() {
     solana_logger::setup();
 
@@ -1417,8 +1437,8 @@ fn test_program_bpf_ro_modify() {
     );
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_call_depth() {
     solana_logger::setup();
 
@@ -1452,8 +1472,8 @@ fn test_program_bpf_call_depth() {
     assert!(result.is_err());
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_compute_budget() {
     solana_logger::setup();
 
@@ -1550,8 +1570,8 @@ fn assert_instruction_count() {
     assert!(passed);
 }
 
-#[cfg(any(feature = "bpf_rust"))]
 #[test]
+#[cfg(any(feature = "bpf_rust"))]
 fn test_program_bpf_instruction_introspection() {
     solana_logger::setup();
 
@@ -1611,8 +1631,8 @@ fn test_program_bpf_instruction_introspection() {
     assert!(bank.get_account(&sysvar::instructions::id()).is_none());
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_test_use_latest_executor() {
     solana_logger::setup();
 
@@ -1680,8 +1700,8 @@ fn test_program_bpf_test_use_latest_executor() {
         .is_ok());
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_upgrade() {
     solana_logger::setup();
 
@@ -1768,8 +1788,8 @@ fn test_program_bpf_upgrade() {
     );
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_invoke_in_same_tx_as_deployment() {
     solana_logger::setup();
 
@@ -2058,8 +2078,8 @@ fn test_program_bpf_invoke_in_same_tx_as_undeployment() {
     }
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_invoke_upgradeable_via_cpi() {
     solana_logger::setup();
 
@@ -2231,8 +2251,8 @@ fn test_program_bpf_c_dup() {
         .unwrap();
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_upgrade_via_cpi() {
     solana_logger::setup();
 
@@ -2338,8 +2358,8 @@ fn test_program_bpf_upgrade_via_cpi() {
     assert_ne!(programdata, original_programdata);
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_set_upgrade_authority_via_cpi() {
     solana_logger::setup();
 
@@ -2426,8 +2446,8 @@ fn test_program_bpf_set_upgrade_authority_via_cpi() {
     assert_eq!(Some(new_upgrade_authority_key), upgrade_authority_key);
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_upgradeable_locks() {
     fn setup_program_upgradeable_locks(
         payer_keypair: &Keypair,
@@ -2552,8 +2572,8 @@ fn test_program_upgradeable_locks() {
     assert_eq!(results2[1], Err(TransactionError::AccountInUse));
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_finalize() {
     solana_logger::setup();
 
@@ -2598,8 +2618,8 @@ fn test_program_bpf_finalize() {
     );
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_ro_account_modify() {
     solana_logger::setup();
 
@@ -2660,8 +2680,8 @@ fn test_program_bpf_ro_account_modify() {
     );
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_realloc() {
     solana_logger::setup();
 
@@ -3662,8 +3682,8 @@ fn test_get_minimum_delegation() {
     assert!(result.is_ok());
 }
 
-#[cfg(feature = "bpf_rust")]
 #[test]
+#[cfg(feature = "bpf_rust")]
 fn test_program_bpf_inner_instruction_alignment_checks() {
     solana_logger::setup();
 

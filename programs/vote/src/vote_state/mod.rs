@@ -1323,7 +1323,7 @@ pub mod serde_compact_vote_state_update {
             hash,
             timestamp,
         } = CompactVoteStateUpdate::deserialize(deserializer)?;
-        let root = (root != Slot::MAX).then(|| root);
+        let root = (root != Slot::MAX).then_some(root);
         let lockouts =
             lockout_offsets
                 .iter()

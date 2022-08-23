@@ -69,7 +69,7 @@ impl WithdrawData {
         // current source balance
         let final_ciphertext = current_ciphertext - &ElGamal::encode(amount);
 
-        let pod_pubkey = pod::ElGamalPubkey((&keypair.public).to_bytes());
+        let pod_pubkey = pod::ElGamalPubkey(keypair.public.to_bytes());
         let pod_final_ciphertext: pod::ElGamalCiphertext = final_ciphertext.into();
 
         let context = WithdrawProofContext {

@@ -562,7 +562,9 @@ where
             };
             (index >> 1, parent)
         });
-    (index == 0).then(|| root).ok_or(Error::InvalidMerkleProof)
+    (index == 0)
+        .then_some(root)
+        .ok_or(Error::InvalidMerkleProof)
 }
 
 fn get_merkle_proof(
@@ -619,7 +621,7 @@ fn make_merkle_proof(
         size = (size + 1) >> 1;
         index >>= 1;
     }
-    (offset + 1 == tree.len()).then(|| proof)
+    (offset + 1 == tree.len()).then_some(proof)
 }
 
 pub(super) fn recover(
@@ -877,7 +879,7 @@ pub(super) fn make_shreds_from_data(
                 let num_data_shreds = num_data_shreds.max(1);
                 let erasure_batch_size = shredder::get_erasure_batch_size(num_data_shreds);
                 (proof_size == get_proof_size(erasure_batch_size))
-                    .then(|| (proof_size, data_buffer_size))
+                    .then_some((proof_size, data_buffer_size))
             })
             .ok_or(Error::UnknownProofSize)?;
         common_header.shred_variant = ShredVariant::MerkleData(proof_size);

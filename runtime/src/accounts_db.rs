@@ -2183,7 +2183,7 @@ impl AccountsDb {
                     // figure out how many ancient accounts have been reclaimed
                     let old_reclaims = reclaims
                         .iter()
-                        .filter_map(|(slot, _)| (slot < &one_epoch_old).then(|| 1))
+                        .filter_map(|(slot, _)| (slot < &one_epoch_old).then_some(1))
                         .sum();
                     ancient_account_cleans.fetch_add(old_reclaims, Ordering::Relaxed);
                     reclaims
@@ -2406,7 +2406,7 @@ impl AccountsDb {
             .iter()
             .filter_map(|entry| {
                 let slot = *entry.key();
-                (slot <= max_slot).then(|| slot)
+                (slot <= max_slot).then_some(slot)
             })
             .collect()
     }
@@ -3710,7 +3710,7 @@ impl AccountsDb {
     ) -> Option<SnapshotStorage> {
         self.get_storages_for_slot(slot).and_then(|all_storages| {
             self.should_move_to_ancient_append_vec(&all_storages, current_ancient, slot)
-                .then(|| all_storages)
+                .then_some(all_storages)
         })
     }
 
@@ -5372,7 +5372,7 @@ impl AccountsDb {
                     // with the same slot.
                     let is_being_flushed = !currently_contended_slots.insert(*remove_slot);
                     // If the cache is currently flushing this slot, add it to the list
-                    is_being_flushed.then(|| remove_slot)
+                    is_being_flushed.then_some(remove_slot)
                 })
                 .cloned()
                 .collect();
@@ -7564,7 +7564,7 @@ impl AccountsDb {
                                 // filter out pubkeys that have already been removed from the accounts index in a previous step
                                 let already_removed =
                                     pubkeys_removed_from_accounts_index.contains(pubkey);
-                                (!already_removed).then(|| pubkey)
+                                (!already_removed).then_some(pubkey)
                             }),
                         |_pubkey, _slots_refs| AccountsIndexScanResult::Unref,
                     )

@@ -2125,10 +2125,7 @@ mod tests {
         let addr = data.as_ptr() as u64;
         let config = Config::default();
         let memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion::new_readonly(&data, START),
-            ],
+            vec![MemoryRegion::new_readonly(&data, START)],
             &config,
         )
         .unwrap();
@@ -2168,16 +2165,13 @@ mod tests {
         let addr = &pubkey as *const _ as u64;
         let config = Config::default();
         let memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: std::mem::size_of::<Pubkey>() as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: std::mem::size_of::<Pubkey>() as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2199,17 +2193,19 @@ mod tests {
             vm_gap_shift: 63,
             is_writable: false,
         };
-        let mut memory_mapping = MemoryMapping::new::<UserError>(
-            vec![MemoryRegion::default(), memory_region.clone()],
-            &config,
-        )
-        .unwrap();
+        let mut memory_mapping =
+            MemoryMapping::new::<UserError>(vec![memory_region.clone()], &config).unwrap();
         let translated_instruction =
             translate_type::<Instruction>(&memory_mapping, 0x100000000, true).unwrap();
         assert_eq!(instruction, *translated_instruction);
         memory_region.len = 1;
+        let memory_region_index = memory_mapping
+            .get_regions()
+            .iter()
+            .position(|memory_region| memory_region.vm_addr == 0x100000000)
+            .unwrap();
         memory_mapping
-            .replace_region::<BpfError>(1, memory_region)
+            .replace_region::<BpfError>(memory_region_index, memory_region)
             .unwrap();
         assert!(translate_type::<Instruction>(&memory_mapping, 0x100000000, true).is_err());
     }
@@ -2223,16 +2219,13 @@ mod tests {
         let addr = good_data.as_ptr() as *const _ as u64;
         let config = Config::default();
         let memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: good_data.len() as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: good_data.len() as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2245,16 +2238,13 @@ mod tests {
         let mut data = vec![1u8, 2, 3, 4, 5];
         let addr = data.as_ptr() as *const _ as u64;
         let memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: data.len() as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: data.len() as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2282,16 +2272,13 @@ mod tests {
         let mut data = vec![1u64, 2, 3, 4, 5];
         let addr = data.as_ptr() as *const _ as u64;
         let memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: (data.len() * size_of::<u64>()) as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: (data.len() * size_of::<u64>()) as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2309,16 +2296,13 @@ mod tests {
         let mut data = vec![solana_sdk::pubkey::new_rand(); 5];
         let addr = data.as_ptr() as *const _ as u64;
         let memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: (data.len() * std::mem::size_of::<Pubkey>()) as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: (data.len() * std::mem::size_of::<Pubkey>()) as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2336,16 +2320,13 @@ mod tests {
         let addr = string.as_ptr() as *const _ as u64;
         let config = Config::default();
         let memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: string.len() as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: string.len() as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2376,8 +2357,7 @@ mod tests {
             bpf_loader::id(),
         );
         let config = Config::default();
-        let mut memory_mapping =
-            MemoryMapping::new::<UserError>(vec![MemoryRegion::default()], &config).unwrap();
+        let mut memory_mapping = MemoryMapping::new::<UserError>(vec![], &config).unwrap();
         let mut result: Result<u64, EbpfError<BpfError>> = Ok(0);
         SyscallAbort::call(
             &mut SyscallAbort {
@@ -2411,16 +2391,13 @@ mod tests {
         let addr = string.as_ptr() as *const _ as u64;
         let config = Config::default();
         let mut memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: string.len() as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: string.len() as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2483,16 +2460,13 @@ mod tests {
         let addr = string.as_ptr() as *const _ as u64;
         let config = Config::default();
         let mut memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: string.len() as u64,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: string.len() as u64,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2620,16 +2594,13 @@ mod tests {
         let addr = pubkey.as_ref().first().unwrap() as *const _ as u64;
         let config = Config::default();
         let mut memory_mapping = MemoryMapping::new::<UserError>(
-            vec![
-                MemoryRegion::default(),
-                MemoryRegion {
-                    host_addr: addr,
-                    vm_addr: 0x100000000,
-                    len: 32,
-                    vm_gap_shift: 63,
-                    is_writable: false,
-                },
-            ],
+            vec![MemoryRegion {
+                host_addr: addr,
+                vm_addr: 0x100000000,
+                len: 32,
+                vm_gap_shift: 63,
+                is_writable: false,
+            }],
             &config,
         )
         .unwrap();
@@ -2698,7 +2669,6 @@ mod tests {
             let mut heap = AlignedMemory::<HOST_ALIGN>::zero_filled(100);
             let mut memory_mapping = MemoryMapping::new::<UserError>(
                 vec![
-                    MemoryRegion::default(),
                     MemoryRegion::new_readonly(&[], ebpf::MM_PROGRAM_START),
                     MemoryRegion::new_writable_gapped(&mut [], ebpf::MM_STACK_START, 4096),
                     MemoryRegion::new_writable(heap.as_slice_mut(), ebpf::MM_HEAP_START),
@@ -2740,7 +2710,6 @@ mod tests {
             let mut heap = AlignedMemory::<HOST_ALIGN>::zero_filled(100);
             let mut memory_mapping = MemoryMapping::new::<UserError>(
                 vec![
-                    MemoryRegion::default(),
                     MemoryRegion::new_readonly(&[], ebpf::MM_PROGRAM_START),
                     MemoryRegion::new_writable_gapped(&mut [], ebpf::MM_STACK_START, 4096),
                     MemoryRegion::new_writable(heap.as_slice_mut(), ebpf::MM_HEAP_START),
@@ -2781,7 +2750,6 @@ mod tests {
             let mut heap = AlignedMemory::<HOST_ALIGN>::zero_filled(100);
             let mut memory_mapping = MemoryMapping::new::<UserError>(
                 vec![
-                    MemoryRegion::default(),
                     MemoryRegion::new_readonly(&[], ebpf::MM_PROGRAM_START),
                     MemoryRegion::new_writable_gapped(&mut [], ebpf::MM_STACK_START, 4096),
                     MemoryRegion::new_writable(heap.as_slice_mut(), ebpf::MM_HEAP_START),
@@ -2824,7 +2792,6 @@ mod tests {
             let config = Config::default();
             let mut memory_mapping = MemoryMapping::new::<UserError>(
                 vec![
-                    MemoryRegion::default(),
                     MemoryRegion::new_readonly(&[], ebpf::MM_PROGRAM_START),
                     MemoryRegion::new_writable_gapped(&mut [], ebpf::MM_STACK_START, 4096),
                     MemoryRegion::new_writable(heap.as_slice_mut(), ebpf::MM_HEAP_START),
@@ -2896,7 +2863,6 @@ mod tests {
         let rw_va = 0x200000000;
         let mut memory_mapping = MemoryMapping::new::<UserError>(
             vec![
-                MemoryRegion::default(),
                 MemoryRegion {
                     host_addr: bytes_to_hash.as_ptr() as *const _ as u64,
                     vm_addr: ro_va,
@@ -3022,7 +2988,6 @@ mod tests {
 
         let mut memory_mapping = MemoryMapping::new::<UserError>(
             vec![
-                MemoryRegion::default(),
                 MemoryRegion {
                     host_addr: valid_bytes.as_ptr() as *const _ as u64,
                     vm_addr: valid_bytes_va,
@@ -3123,7 +3088,6 @@ mod tests {
 
         let mut memory_mapping = MemoryMapping::new::<UserError>(
             vec![
-                MemoryRegion::default(),
                 MemoryRegion {
                     host_addr: valid_bytes.as_ptr() as *const _ as u64,
                     vm_addr: valid_bytes_va,
@@ -3237,7 +3201,6 @@ mod tests {
 
         let mut memory_mapping = MemoryMapping::new::<UserError>(
             vec![
-                MemoryRegion::default(),
                 MemoryRegion {
                     host_addr: left_point.as_ptr() as *const _ as u64,
                     vm_addr: left_point_va,
@@ -3444,7 +3407,6 @@ mod tests {
 
         let mut memory_mapping = MemoryMapping::new::<UserError>(
             vec![
-                MemoryRegion::default(),
                 MemoryRegion {
                     host_addr: left_point.as_ptr() as *const _ as u64,
                     vm_addr: left_point_va,
@@ -3830,16 +3792,13 @@ mod tests {
             let got_clock_va = 0x100000000;
 
             let mut memory_mapping = MemoryMapping::new::<UserError>(
-                vec![
-                    MemoryRegion::default(),
-                    MemoryRegion {
-                        host_addr: &got_clock as *const _ as u64,
-                        vm_addr: got_clock_va,
-                        len: size_of::<Clock>() as u64,
-                        vm_gap_shift: 63,
-                        is_writable: true,
-                    },
-                ],
+                vec![MemoryRegion {
+                    host_addr: &got_clock as *const _ as u64,
+                    vm_addr: got_clock_va,
+                    len: size_of::<Clock>() as u64,
+                    vm_gap_shift: 63,
+                    is_writable: true,
+                }],
                 &config,
             )
             .unwrap();
@@ -3867,16 +3826,13 @@ mod tests {
             let got_epochschedule_va = 0x100000000;
 
             let mut memory_mapping = MemoryMapping::new::<UserError>(
-                vec![
-                    MemoryRegion::default(),
-                    MemoryRegion {
-                        host_addr: &got_epochschedule as *const _ as u64,
-                        vm_addr: got_epochschedule_va,
-                        len: size_of::<EpochSchedule>() as u64,
-                        vm_gap_shift: 63,
-                        is_writable: true,
-                    },
-                ],
+                vec![MemoryRegion {
+                    host_addr: &got_epochschedule as *const _ as u64,
+                    vm_addr: got_epochschedule_va,
+                    len: size_of::<EpochSchedule>() as u64,
+                    vm_gap_shift: 63,
+                    is_writable: true,
+                }],
                 &config,
             )
             .unwrap();
@@ -3913,16 +3869,13 @@ mod tests {
             let got_fees_va = 0x100000000;
 
             let mut memory_mapping = MemoryMapping::new::<UserError>(
-                vec![
-                    MemoryRegion::default(),
-                    MemoryRegion {
-                        host_addr: &got_fees as *const _ as u64,
-                        vm_addr: got_fees_va,
-                        len: size_of::<Fees>() as u64,
-                        vm_gap_shift: 63,
-                        is_writable: true,
-                    },
-                ],
+                vec![MemoryRegion {
+                    host_addr: &got_fees as *const _ as u64,
+                    vm_addr: got_fees_va,
+                    len: size_of::<Fees>() as u64,
+                    vm_gap_shift: 63,
+                    is_writable: true,
+                }],
                 &config,
             )
             .unwrap();
@@ -3946,16 +3899,13 @@ mod tests {
             let got_rent_va = 0x100000000;
 
             let mut memory_mapping = MemoryMapping::new::<UserError>(
-                vec![
-                    MemoryRegion::default(),
-                    MemoryRegion {
-                        host_addr: &got_rent as *const _ as u64,
-                        vm_addr: got_rent_va,
-                        len: size_of::<Rent>() as u64,
-                        vm_gap_shift: 63,
-                        is_writable: true,
-                    },
-                ],
+                vec![MemoryRegion {
+                    host_addr: &got_rent as *const _ as u64,
+                    vm_addr: got_rent_va,
+                    len: size_of::<Rent>() as u64,
+                    vm_gap_shift: 63,
+                    is_writable: true,
+                }],
                 &config,
             )
             .unwrap();
@@ -3992,7 +3942,6 @@ mod tests {
         let bump_seed = 0;
         let mut mock_slices = Vec::with_capacity(seeds.len());
         let mut regions = vec![
-            MemoryRegion::default(),
             MemoryRegion {
                 host_addr: mock_slices.as_ptr() as u64,
                 vm_addr: SEEDS_VA,

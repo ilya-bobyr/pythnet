@@ -288,9 +288,8 @@ impl PrioritizationFeeCache {
 
         let (_, entry_update_time) = measure!(
             {
-                let mut block_prioritization_fee = slot_prioritization_fee
-                    .entry(*bank_id)
-                    .or_insert(PrioritizationFee::default());
+                let mut block_prioritization_fee =
+                    slot_prioritization_fee.entry(*bank_id).or_default();
                 block_prioritization_fee.update(transaction_fee, &writable_accounts)
             },
             "entry_update_time"
@@ -327,9 +326,8 @@ impl PrioritizationFeeCache {
                     warn!("Finalized bank has empty prioritization fee cache. slot {slot} bank id {bank_id}");
                 }
 
-                let mut block_prioritization_fee = slot_prioritization_fee
-                    .entry(*bank_id)
-                    .or_insert(PrioritizationFee::default());
+                let mut block_prioritization_fee =
+                    slot_prioritization_fee.entry(*bank_id).or_default();
                 let result = block_prioritization_fee.mark_block_completed();
                 block_prioritization_fee.report_metrics(*slot);
                 result

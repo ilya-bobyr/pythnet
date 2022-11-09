@@ -2069,8 +2069,7 @@ impl BankingStage {
         );
 
         let filter_retryable_packets_us = filter_retryable_packets_time.as_us();
-        slot_metrics_tracker
-            .increment_filter_retryable_packets_us(filter_retryable_packets_us as u64);
+        slot_metrics_tracker.increment_filter_retryable_packets_us(filter_retryable_packets_us);
         banking_stage_stats
             .filter_pending_packets_elapsed
             .fetch_add(filter_retryable_packets_us, Ordering::Relaxed);
@@ -3388,7 +3387,7 @@ mod tests {
                 let pubkey = solana_sdk::pubkey::new_rand();
                 let blockhash = Hash::new_unique();
                 let transaction = system_transaction::transfer(&keypair, &pubkey, 1, blockhash);
-                let mut p = Packet::from_data(None, &transaction).unwrap();
+                let mut p = Packet::from_data(None, transaction).unwrap();
                 p.meta.port = packets_id;
                 p.meta.set_tracer(true);
                 DeserializedPacket::new(p).unwrap()
@@ -4222,7 +4221,7 @@ mod tests {
             1,
             Hash::new_unique(),
         );
-        let packet = Packet::from_data(None, &tx).unwrap();
+        let packet = Packet::from_data(None, tx).unwrap();
         let deserialized_packet = DeserializedPacket::new(packet).unwrap();
 
         let genesis_config_info = create_slow_genesis_config(10_000);
@@ -4311,7 +4310,7 @@ mod tests {
         let fwd_block_hash = Hash::new_unique();
         let forwarded_packet = {
             let transaction = system_transaction::transfer(&keypair, &pubkey, 1, fwd_block_hash);
-            let mut packet = Packet::from_data(None, &transaction).unwrap();
+            let mut packet = Packet::from_data(None, transaction).unwrap();
             packet.meta.flags |= PacketFlags::FORWARDED;
             DeserializedPacket::new(packet).unwrap()
         };
@@ -4319,7 +4318,7 @@ mod tests {
         let normal_block_hash = Hash::new_unique();
         let normal_packet = {
             let transaction = system_transaction::transfer(&keypair, &pubkey, 1, normal_block_hash);
-            let packet = Packet::from_data(None, &transaction).unwrap();
+            let packet = Packet::from_data(None, transaction).unwrap();
             DeserializedPacket::new(packet).unwrap()
         };
 

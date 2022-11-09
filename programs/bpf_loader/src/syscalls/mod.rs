@@ -644,7 +644,7 @@ declare_syscall!(
         };
         *result = if free_addr == 0 {
             match allocator.alloc(layout) {
-                Ok(addr) => Ok(addr as u64),
+                Ok(addr) => Ok(addr),
                 Err(_) => Ok(0),
             }
         } else {
@@ -1794,7 +1794,7 @@ declare_syscall!(
                     translate_slice_mut::<u8>(
                         memory_mapping,
                         data_addr,
-                        result_header.data_len as u64,
+                        result_header.data_len,
                         invoke_context.get_check_aligned(),
                         invoke_context.get_check_size(),
                     ),
@@ -1804,7 +1804,7 @@ declare_syscall!(
                     translate_slice_mut::<AccountMeta>(
                         memory_mapping,
                         accounts_addr,
-                        result_header.accounts_len as u64,
+                        result_header.accounts_len,
                         invoke_context.get_check_aligned(),
                         invoke_context.get_check_size(),
                     ),

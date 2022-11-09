@@ -372,7 +372,7 @@ fn test_concurrent_snapshot_packaging(
         bank.squash();
 
         let pending_accounts_package = {
-            if slot == saved_slot as u64 {
+            if slot == saved_slot {
                 // Only send one package on the real pending_accounts_package so that the
                 // packaging service doesn't take forever to run the packaging logic on all
                 // MAX_CACHE_ENTRIES later
@@ -397,7 +397,7 @@ fn test_concurrent_snapshot_packaging(
         .unwrap();
 
         bank_forks.insert(bank);
-        if slot == saved_slot as u64 {
+        if slot == saved_slot {
             // Find the relevant snapshot storages
             let snapshot_storage_files: HashSet<_> = bank_forks[slot]
                 .get_snapshot_storages(None)
@@ -415,7 +415,7 @@ fn test_concurrent_snapshot_packaging(
             for file in snapshot_storage_files {
                 fs::copy(
                     &file,
-                    &saved_accounts_dir.path().join(file.file_name().unwrap()),
+                    saved_accounts_dir.path().join(file.file_name().unwrap()),
                 )
                 .unwrap();
             }
@@ -435,7 +435,7 @@ fn test_concurrent_snapshot_packaging(
                 .unwrap();
             // only save off the snapshot of this slot, we don't need the others.
             let options = CopyOptions::new();
-            fs_extra::dir::copy(&last_snapshot_path, &saved_snapshots_dir, &options).unwrap();
+            fs_extra::dir::copy(last_snapshot_path, &saved_snapshots_dir, &options).unwrap();
 
             saved_archive_path = Some(snapshot_utils::build_full_snapshot_archive_path(
                 full_snapshot_archives_dir,

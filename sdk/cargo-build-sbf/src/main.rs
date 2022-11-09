@@ -370,7 +370,7 @@ fn link_sbf_toolchain(config: &Config) {
     let rustup_args = vec!["toolchain", "list", "-v"];
     let rustup_output = spawn(
         &rustup,
-        &rustup_args,
+        rustup_args,
         config.generate_child_script_on_failure,
     );
     if config.verbose {
@@ -390,7 +390,7 @@ fn link_sbf_toolchain(config: &Config) {
                 ];
                 let output = spawn(
                     &rustup,
-                    &rustup_args,
+                    rustup_args,
                     config.generate_child_script_on_failure,
                 );
                 if config.verbose {
@@ -411,7 +411,7 @@ fn link_sbf_toolchain(config: &Config) {
         ];
         let output = spawn(
             &rustup,
-            &rustup_args,
+            rustup_args,
             config.generate_child_script_on_failure,
         );
         if config.verbose {
@@ -572,7 +572,7 @@ fn build_sbf_package(config: &Config, target_directory: &Path, package: &cargo_m
         rustflags = Cow::Owned(format!("{} -g", &rustflags));
     }
     if let Cow::Owned(flags) = rustflags {
-        env::set_var("RUSTFLAGS", &flags);
+        env::set_var("RUSTFLAGS", flags);
     }
     if config.verbose {
         debug!(
@@ -653,11 +653,11 @@ fn build_sbf_package(config: &Config, target_directory: &Path, package: &cargo_m
     }
 
     if let Some(program_name) = program_name {
-        let program_unstripped_so = target_build_directory.join(&format!("{}.so", program_name));
-        let program_dump = sbf_out_dir.join(&format!("{}-dump.txt", program_name));
-        let program_so = sbf_out_dir.join(&format!("{}.so", program_name));
-        let program_debug = sbf_out_dir.join(&format!("{}.debug", program_name));
-        let program_keypair = sbf_out_dir.join(&format!("{}-keypair.json", program_name));
+        let program_unstripped_so = target_build_directory.join(format!("{}.so", program_name));
+        let program_dump = sbf_out_dir.join(format!("{}-dump.txt", program_name));
+        let program_so = sbf_out_dir.join(format!("{}.so", program_name));
+        let program_debug = sbf_out_dir.join(format!("{}.debug", program_name));
+        let program_keypair = sbf_out_dir.join(format!("{}-keypair.json", program_name));
 
         fn file_older_or_missing(prerequisite_file: &Path, target_file: &Path) -> bool {
             let prerequisite_metadata = fs::metadata(prerequisite_file).unwrap_or_else(|err| {

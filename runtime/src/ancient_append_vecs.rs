@@ -239,7 +239,7 @@ pub mod tests {
         let sm = StoredMeta {
             write_version: 0,
             pubkey: Pubkey::from([0; 32]),
-            data_len: data_len as u64,
+            data_len,
         };
         av.append_accounts(&[(sm, Some(&account))], &[Hash::default()]);
         assert!(is_ancient(&av));

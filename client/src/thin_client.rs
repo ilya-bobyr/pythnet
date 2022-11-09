@@ -226,6 +226,9 @@ impl ThinClient {
                 if num_confirmed == 0 {
                     let conn = self.connection_cache.get_connection(self.tpu_addr());
                     // Send the transaction if there has been no confirmation (e.g. the first time)
+                    // Clippy says `&wire_transaction` as an unnecessary dereference, but we do not
+                    // want to move in a loop.
+                    #[allow(clippy::needless_borrow)]
                     conn.send_wire_transaction(&wire_transaction)?;
                 }
 

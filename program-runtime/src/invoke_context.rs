@@ -1475,10 +1475,10 @@ mod tests {
 
         invoke_context
             .accounts_data_meter
-            .set_initial(user_account_data_len as u64);
+            .set_initial(user_account_data_len);
         invoke_context
             .accounts_data_meter
-            .set_maximum(user_account_data_len as u64 * 3);
+            .set_maximum(user_account_data_len * 3);
         let remaining_account_data_len = invoke_context.accounts_data_meter.remaining();
 
         let instruction_accounts = [

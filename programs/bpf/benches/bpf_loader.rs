@@ -111,7 +111,7 @@ fn bench_program_alu(bencher: &mut Bencher) {
                 .unwrap();
         });
         let instructions = vm.get_total_instruction_count();
-        let summary = bencher.bench(|_bencher| {}).unwrap();
+        let summary = bencher.bench(|_bencher| Ok(())).unwrap().unwrap();
         println!("  {:?} instructions", instructions);
         println!("  {:?} ns/iter median", summary.median as u64);
         assert!(0f64 != summary.median);
@@ -131,7 +131,7 @@ fn bench_program_alu(bencher: &mut Bencher) {
         );
 
         bencher.iter(|| vm.execute_program_jit(&mut instruction_meter).unwrap());
-        let summary = bencher.bench(|_bencher| {}).unwrap();
+        let summary = bencher.bench(|_bencher| Ok(())).unwrap().unwrap();
         println!("  {:?} instructions", instructions);
         println!("  {:?} ns/iter median", summary.median as u64);
         assert!(0f64 != summary.median);

@@ -1434,7 +1434,7 @@ mod test {
         .unwrap();
         let ui_meta_from: UiTransactionStatusMeta = meta.clone().into();
         assert_eq!(
-            serde_json::to_value(&ui_meta_from).unwrap(),
+            serde_json::to_value(ui_meta_from).unwrap(),
             expected_json_output_value
         );
 
@@ -1455,13 +1455,13 @@ mod test {
         .unwrap();
         let ui_meta_parse_with_rewards = UiTransactionStatusMeta::parse(meta.clone(), &[], true);
         assert_eq!(
-            serde_json::to_value(&ui_meta_parse_with_rewards).unwrap(),
+            serde_json::to_value(ui_meta_parse_with_rewards).unwrap(),
             expected_json_output_value
         );
 
         let ui_meta_parse_no_rewards = UiTransactionStatusMeta::parse(meta, &[], false);
         assert_eq!(
-            serde_json::to_value(&ui_meta_parse_no_rewards).unwrap(),
+            serde_json::to_value(ui_meta_parse_no_rewards).unwrap(),
             expected_json_output_value
         );
     }

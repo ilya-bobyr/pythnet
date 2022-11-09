@@ -40,7 +40,7 @@ fn copy_append_vecs<P: AsRef<Path>>(
         let storage_path = storage.get_path();
         let file_name = AppendVec::file_name(storage.slot(), storage.append_vec_id());
         let output_path = output_dir.as_ref().join(&file_name);
-        std::fs::copy(&storage_path, &output_path)?;
+        std::fs::copy(storage_path, &output_path)?;
         unpacked_append_vec_map.insert(file_name, output_path);
     }
 

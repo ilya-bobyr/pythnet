@@ -740,7 +740,7 @@ impl EntrySlice for [Entry] {
             None => return self.verify_cpu(start_hash),
             Some(api) => api,
         };
-        inc_new_counter_info!("entry_verify-num_entries", self.len() as usize);
+        inc_new_counter_info!("entry_verify-num_entries", self.len());
 
         let genesis = [Entry {
             num_hashes: 0,

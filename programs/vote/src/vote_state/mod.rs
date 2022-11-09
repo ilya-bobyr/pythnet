@@ -1751,7 +1751,7 @@ mod tests {
                 .convert_to_current();
 
         for i in 0..(MAX_LOCKOUT_HISTORY + 1) {
-            vote_state.process_slot_vote_unchecked((INITIAL_LOCKOUT as usize * i) as u64);
+            vote_state.process_slot_vote_unchecked((INITIAL_LOCKOUT * i) as u64);
         }
 
         // The last vote should have been popped b/c it reached a depth of MAX_LOCKOUT_HISTORY
@@ -1780,7 +1780,7 @@ mod tests {
         let mut vote_state = VoteState::new_for_test(&voter_pubkey);
 
         for i in 0..3 {
-            vote_state.process_slot_vote_unchecked(i as u64);
+            vote_state.process_slot_vote_unchecked(i);
         }
 
         check_lockouts(&vote_state);
@@ -2119,7 +2119,7 @@ mod tests {
 
         let credits = (MAX_EPOCH_CREDITS_HISTORY + 2) as u64;
         for i in 0..credits {
-            vote_state.increment_credits(i as u64, 1);
+            vote_state.increment_credits(i, 1);
         }
         assert_eq!(vote_state.credits(), credits);
         assert!(vote_state.epoch_credits().len() <= MAX_EPOCH_CREDITS_HISTORY);

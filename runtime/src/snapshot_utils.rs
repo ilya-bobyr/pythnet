@@ -334,7 +334,7 @@ pub fn archive_snapshot_package(
     // Add the snapshots to the staging directory
     symlink::symlink_dir(
         snapshot_package.snapshot_links.path(),
-        &staging_snapshots_dir,
+        staging_snapshots_dir,
     )
     .map_err(|e| SnapshotError::IoWithSource(e, "create staging symlinks"))?;
 
@@ -845,10 +845,7 @@ fn verify_and_unarchive_snapshots(
         incremental_snapshot_archive_info,
     )?;
 
-    let parallel_divisions = std::cmp::min(
-        PARALLEL_UNTAR_READERS_DEFAULT,
-        std::cmp::max(1, num_cpus::get() / 4),
-    );
+    let parallel_divisions = (num_cpus::get() / 4).clamp(1, PARALLEL_UNTAR_READERS_DEFAULT);
 
     let unarchived_full_snapshot = unarchive_snapshot(
         &bank_snapshots_dir,
@@ -1163,7 +1160,7 @@ where
     info!("{}", measure_untar);
 
     let unpacked_version_file = unpack_dir.path().join("version");
-    let snapshot_version = snapshot_version_from_file(&unpacked_version_file)?;
+    let snapshot_version = snapshot_version_from_file(unpacked_version_file)?;
 
     Ok(UnarchivedSnapshot {
         unpack_dir,
@@ -3167,7 +3164,7 @@ mod tests {
         ] {
             let snapshot_path = incremental_snapshot_archives_dir
                 .path()
-                .join(&snapshot_filenames);
+                .join(snapshot_filenames);
             File::create(snapshot_path).unwrap();
         }
 

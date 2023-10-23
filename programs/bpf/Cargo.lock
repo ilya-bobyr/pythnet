@@ -524,6 +524,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bstr"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6798148dccfbff0fae41c7574d2fa8f1ef3492fba0face179de5d8d447d67b05"
+dependencies = [
+ "memchr",
+ "regex-automata",
+ "serde",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1098,6 +1109,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
+
+[[package]]
 name = "eager"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1560,7 +1577,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10463d9ff00a2a068db14231982f5132edebad0d7660cd956a1c30292dbcbfbd"
 dependencies = [
  "aho-corasick",
- "bstr",
+ "bstr 0.2.17",
  "fnv",
  "log",
  "regex",
@@ -1689,6 +1706,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91780f809e750b0a89f5544be56617ff6b1227ee485bcb06ebe10cdf89bd3b71"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -3262,6 +3288,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pythnet-sdk"
+version = "1.13.6"
+source = "git+https://github.com/pyth-network/pyth-crosschain?rev=e670f57f89b05398ca352e4accb1e32724a8e1b4#e670f57f89b05398ca352e4accb1e32724a8e1b4"
+dependencies = [
+ "bincode",
+ "borsh",
+ "bytemuck",
+ "fast-math",
+ "hex",
+ "rustc_version",
+ "serde",
+ "serde_wormhole",
+ "sha3 0.10.4",
+ "slow_primes",
+ "wormhole-sdk",
+]
+
+[[package]]
 name = "qstring"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3509,6 +3553,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-automata"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59b23e92ee4318893fa3fe3e6fb365258efbfe6ac6ab30f090cdcbb7aa37efa9"
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3735,6 +3785,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "schemars"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45a28f4c49489add4ce10783f7911893516f15afe45d015608d41faca6bc4d29"
+dependencies = [
+ "dyn-clone",
+ "schemars_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "schemars_derive"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c767fd6fa65d9ccf9cf026122c1b555f2ef9a4f0cea69da4d7dbc3e258d30967"
+dependencies = [
+ "proc-macro2 1.0.55",
+ "quote 1.0.25",
+ "serde_derive_internals",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3811,9 +3885,9 @@ checksum = "a41d061efea015927ac527063765e73601444cdc344ba855bc7bd44578b25e1c"
 
 [[package]]
 name = "serde"
-version = "1.0.138"
+version = "1.0.144"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1578c6245786b9d168c5447eeacfb96856573ca56c9d68fdcf394be134882a47"
+checksum = "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860"
 dependencies = [
  "serde_derive",
 ]
@@ -3829,9 +3903,20 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.138"
+version = "1.0.144"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "023e9b1467aef8a10fb88f25611870ada9800ef7e22afce356bb0d2387b6f27c"
+checksum = "94ed3a816fb1d101812f83e789f888322c34e291f894f19590dc310963e87a00"
+dependencies = [
+ "proc-macro2 1.0.55",
+ "quote 1.0.25",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "serde_derive_internals"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85bf8229e7920a9f636479437026331ce11aa132b4dde37d121944a44d6e5f3c"
 dependencies = [
  "proc-macro2 1.0.55",
  "quote 1.0.25",
@@ -3859,6 +3944,18 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_wormhole"
+version = "0.1.0"
+source = "git+https://github.com/wormhole-foundation/wormhole?tag=v2.17.1#3e423a75180f9da69263279e9ffce47b1858ae78"
+dependencies = [
+ "base64 0.13.0",
+ "itoa",
+ "serde",
+ "serde_bytes",
+ "thiserror",
 ]
 
 [[package]]
@@ -3947,9 +4044,9 @@ dependencies = [
 
 [[package]]
 name = "sha3"
-version = "0.10.1"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "881bf8156c87b6301fc5ca6b27f11eeb2761224c7081e69b409d5a1951a70c86"
+checksum = "eaedf34ed289ea47c2b741bb72e5357a209512d67bcd4bda44359e5bf0470f56"
 dependencies = [
  "digest 0.10.3",
  "keccak",
@@ -4016,6 +4113,15 @@ name = "slab"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
+
+[[package]]
+name = "slow_primes"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58267dd2fbaa6dceecba9e3e106d2d90a2b02497c0e8b01b8759beccf5113938"
+dependencies = [
+ "num",
+]
 
 [[package]]
 name = "smallvec"
@@ -5201,7 +5307,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2 0.10.2",
- "sha3 0.10.1",
+ "sha3 0.10.4",
  "solana-frozen-abi 1.14.16",
  "solana-frozen-abi-macro 1.14.16",
  "solana-sdk-macro 1.14.16",
@@ -5248,7 +5354,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2 0.10.2",
- "sha3 0.10.1",
+ "sha3 0.10.4",
  "solana-frozen-abi 1.14.17",
  "solana-frozen-abi-macro 1.14.17",
  "solana-sdk-macro 1.14.17",
@@ -5389,6 +5495,7 @@ dependencies = [
  "arrayref",
  "bincode",
  "blake3",
+ "borsh",
  "bv",
  "bytemuck",
  "byteorder 1.4.3",
@@ -5411,6 +5518,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "ouroboros",
+ "pythnet-sdk",
  "rand 0.7.3",
  "rayon",
  "regex",
@@ -5481,7 +5589,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2 0.10.2",
- "sha3 0.10.1",
+ "sha3 0.10.4",
  "solana-frozen-abi 1.14.16",
  "solana-frozen-abi-macro 1.14.16",
  "solana-logger 1.14.16",
@@ -5530,7 +5638,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2 0.10.2",
- "sha3 0.10.1",
+ "sha3 0.10.4",
  "solana-frozen-abi 1.14.17",
  "solana-frozen-abi-macro 1.14.17",
  "solana-logger 1.14.17",
@@ -7227,6 +7335,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "wormhole-sdk"
+version = "0.1.0"
+source = "git+https://github.com/wormhole-foundation/wormhole?tag=v2.17.1#3e423a75180f9da69263279e9ffce47b1858ae78"
+dependencies = [
+ "anyhow",
+ "bstr 1.6.0",
+ "schemars",
+ "serde",
+ "serde_wormhole",
+ "sha3 0.10.4",
+ "thiserror",
 ]
 
 [[package]]

@@ -99,3 +99,6 @@ members = [
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+
+[patch.crates-io]
+serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", tag = "v2.17.1" }

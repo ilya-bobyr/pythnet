@@ -564,6 +564,22 @@ pub mod enable_accumulator_sysvar {
     solana_sdk::declare_id!("BawYFA2oeA4CacxgQgLn6ZwRWDq1ZPXruUuEbko8oPT5");
 }
 
+pub mod move_accumulator_to_end_of_block {
+    solana_sdk::declare_id!("Ecz7cAP89wKDAoEJYhovFcxMcXRJiWGfFdefcSrx2Ynr");
+}
+
+pub mod zero_wormhole_message_timestamps {
+    solana_sdk::declare_id!("UMg4wFe51vKLHXpbdKWP8kFHWQBsCfbd67AoiyPSaH2");
+}
+
+pub mod undo_move_accumulator_to_end_of_block {
+    solana_sdk::declare_id!("EfmMYu7ajxsKNgtWmDWKYq9Pt5EUrC3qEHAXEVBBT1bs");
+}
+
+pub mod redo_move_accumulator_to_end_of_block {
+    solana_sdk::declare_id!("skyhwRBbP1LoHzWy1QrwLWy3vo2uHkzVV1zpN9UsGuw");
+}
+
 lazy_static! {
     /// Map of feature identifiers to user-visible description
     pub static ref FEATURE_NAMES: HashMap<Pubkey, &'static str> = [
@@ -699,6 +715,10 @@ lazy_static! {
         (revise_turbine_epoch_stakes::id(), "revise turbine epoch stakes"),
         (better_error_codes_for_tx_lamport_check::id(), "better error codes for tx lamport check #33353"),
         (enable_accumulator_sysvar::id(), "enable accumulator sysvar #<GH_ISSUE_NUMBER>"),
+        (move_accumulator_to_end_of_block::id(), "move accumulator to end of block #<GH_ISSUE_NUMBER>"),
+        (zero_wormhole_message_timestamps::id(), "use zeroed timestamps in wormhole messages"),
+        (undo_move_accumulator_to_end_of_block::id(), "undo accumulator end of block change"),
+        (redo_move_accumulator_to_end_of_block::id(), "redo accumulator end of block change"),
         /*************** ADD NEW FEATURES HERE ***************/
     ]
     .iter()
@@ -798,6 +818,33 @@ lazy_static! {
        // expensive, account creation uses older harsher formula.
        // (tx_wide_compute_cap::id(), "transaction wide compute cap"),
        // (reduce_required_deploy_balance::id(), "reduce required payer balance for program deploys"),
+
+       // Features enabled later. This list will be updated as new features are enabled.
+
+       // Slot: 82172256
+       (enable_accumulator_sysvar::id(), "enable accumulator sysvar #<GH_ISSUE_NUMBER>"),
+
+       // Slot: 115868256
+       (preserve_rent_epoch_for_rent_exempt_accounts::id(), "preserve rent epoch for rent exempt accounts #26479"),
+       (nonce_must_be_authorized::id(), "nonce must be authorized"),
+       (nonce_must_be_advanceable::id(), "durable nonces must be advanceable"),
+       (vote_authorize_with_seed::id(), "An instruction you can use to change a vote accounts authority when the current authority is a derived key #25860"),
+       (prevent_crediting_accounts_that_end_rent_paying::id(), "prevent crediting rent paying accounts #26606"),
+       (return_none_for_zero_lamport_accounts::id(), "return none for zero lamport accounts #27800"),
+       (move_accumulator_to_end_of_block::id(), "move accumulator to end of block #<GH_ISSUE_NUMBER>"),
+       (quick_bail_on_panic::id(), "quick bail on panic"),
+       (check_syscall_outputs_do_not_overlap::id(), "check syscall outputs do_not overlap #28600"),
+       (tx_wide_compute_cap::id(), "transaction wide compute cap"),
+       (zero_wormhole_message_timestamps::id(), "use zeroed timestamps in wormhole messages"),
+
+       // Slot: 125372256
+       (move_serialized_len_ptr_in_cpi::id(), "cpi ignore serialized_len_ptr #29592"),
+
+       // Slot: 131852256
+       (undo_move_accumulator_to_end_of_block::id(), "undo accumulator end of block change"),
+
+       // Slot: 152588256
+       (redo_move_accumulator_to_end_of_block::id(), "redo accumulator end of block change"),
    ]
    .iter()
    .cloned()

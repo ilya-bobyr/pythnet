@@ -1409,7 +1409,28 @@ impl Bank {
         bank.update_epoch_schedule();
         bank.update_recent_blockhashes();
         bank.fill_missing_sysvar_cache_entries();
-        bank.update_accumulator();
+
+        // The features are activated one after another.
+        // The accumulator is moved to end of the block either if the
+        // move_accumulator_to_end_of_block feature is active or if all
+        // the features are active.
+        let accumulator_moved_to_end_of_block = bank
+            .feature_set
+            .is_active(&feature_set::move_accumulator_to_end_of_block::id())
+            ^ bank
+                .feature_set
+                .is_active(&feature_set::undo_move_accumulator_to_end_of_block::id())
+            ^ bank
+                .feature_set
+                .is_active(&feature_set::redo_move_accumulator_to_end_of_block::id());
+        // If the accumulator is not moved to end of block, update the
+        // accumulator last to make sure that the solana fully updated
+        // state before the accumulator is used.  bank is in a fully
+        // updated state before the accumulator is used.
+        if !accumulator_moved_to_end_of_block {
+            bank.update_accumulator();
+        }
+
         bank
     }
 
@@ -1775,7 +1796,26 @@ impl Bank {
         );
 
         let (_, update_accumulator_time) = measure!({
-            new.update_accumulator();
+            // The features are activated one after another.
+            // The accumulator is moved to end of the block either if the
+            // move_accumulator_to_end_of_block feature is active or if all
+            // the features are active.
+            let accumulator_moved_to_end_of_block = new
+                .feature_set
+                .is_active(&feature_set::move_accumulator_to_end_of_block::id())
+                ^ new
+                    .feature_set
+                    .is_active(&feature_set::undo_move_accumulator_to_end_of_block::id())
+                ^ new
+                    .feature_set
+                    .is_active(&feature_set::redo_move_accumulator_to_end_of_block::id());
+            // If the accumulator is not moved to end of block, update the
+            // accumulator last to make sure that all fully updated state before
+            // the accumulator sysvar updates.  sysvars are in a fully updated
+            // state before the accumulator sysvar updates.
+            if !accumulator_moved_to_end_of_block {
+                new.update_accumulator();
+            }
         });
 
         let (_, fill_sysvar_cache_time) =
@@ -2365,17 +2405,34 @@ impl Bank {
 
         // Generate the Message to emit via Wormhole.
         let message = PostedMessageUnreliableData {
-            message: MessageData {
-                vaa_version: 1,
-                consistency_level: 1,
-                vaa_time: 1u32,
-                vaa_signature_account: Pubkey::default().to_bytes(),
-                submission_time: self.clock().unix_timestamp as u32,
-                nonce: 0,
-                sequence: sequence.sequence,
-                emitter_chain: 26,
-                emitter_address: accumulator_emitter_addr.to_bytes(),
-                payload: acc.serialize(self.slot(), ACCUMULATOR_RING_SIZE),
+            message: if !self
+                .feature_set
+                .is_active(&feature_set::zero_wormhole_message_timestamps::id())
+            {
+                MessageData {
+                    vaa_version: 1,
+                    consistency_level: 1,
+                    vaa_time: 1u32,
+                    vaa_signature_account: Pubkey::default().to_bytes(),
+                    submission_time: self.clock().unix_timestamp as u32,
+                    nonce: 0,
+                    sequence: sequence.sequence,
+                    emitter_chain: 26,
+                    emitter_address: accumulator_emitter_addr.to_bytes(),
+                    payload: acc.serialize(self.slot(), ACCUMULATOR_RING_SIZE),
+                }
+            } else {
+                // Use Default::default() to ensure zeroed VAA fields.
+                MessageData {
+                    vaa_version: 1,
+                    consistency_level: 1,
+                    submission_time: self.clock().unix_timestamp as u32,
+                    sequence: sequence.sequence,
+                    emitter_chain: 26,
+                    emitter_address: accumulator_emitter_addr.to_bytes(),
+                    payload: acc.serialize(self.slot(), ACCUMULATOR_RING_SIZE),
+                    ..Default::default()
+                }
             },
         };
 
@@ -3489,6 +3546,30 @@ impl Bank {
         // committed before this write lock can be obtained here.
         let mut hash = self.hash.write().unwrap();
         if *hash == Hash::default() {
+            // The features are activated one after another.
+            // The accumulator is moved to end of the block either if the
+            // move_accumulator_to_end_of_block feature is active or if all
+            // the features are active.
+            let accumulator_moved_to_end_of_block = self
+                .feature_set
+                .is_active(&feature_set::move_accumulator_to_end_of_block::id())
+                ^ self
+                    .feature_set
+                    .is_active(&feature_set::undo_move_accumulator_to_end_of_block::id())
+                ^ self
+                    .feature_set
+                    .is_active(&feature_set::redo_move_accumulator_to_end_of_block::id());
+            // If accumulator move to end of block is active update the accumulator before doing
+            // other tasks when freezing to avoid any conflicts.
+            if accumulator_moved_to_end_of_block {
+                self.update_accumulator();
+            } else {
+                info!(
+                    "Accumulator: Skipping accumulating end of block because the feature is disabled. Slot: {}",
+                    self.slot()
+                );
+            }
+
             // finish up any deferred changes to account state
             self.collect_rent_eagerly(false);
             self.collect_fees();

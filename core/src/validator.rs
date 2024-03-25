@@ -1520,6 +1520,19 @@ fn load_blockstore(
         AccountsBackgroundService::setup_bank_drop_callback(bank_forks.clone());
 
     {
+        let bank = bank_forks.write().unwrap().working_bank();
+        for (key_name, pk_res) in bank.get_accumulator_keys() {
+            match pk_res {
+                Ok(pk) => info!("Accumulator {}: {}", key_name, pk),
+                Err(err) => {
+                    error!("Failed to get Accumulator {}: {:?}", key_name, err);
+                    std::process::abort();
+                }
+            }
+        }
+    }
+
+    {
         let hard_forks: Vec<_> = bank_forks
             .read()
             .unwrap()

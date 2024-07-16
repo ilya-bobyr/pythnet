@@ -564,6 +564,10 @@ pub mod redo_move_accumulator_to_end_of_block {
     solana_sdk::declare_id!("skyhwRBbP1LoHzWy1QrwLWy3vo2uHkzVV1zpN9UsGuw");
 }
 
+pub mod add_publisher_stake_caps_to_the_accumulator {
+    solana_sdk::declare_id!("J5u6Vrgj7de8zLcjQVhuRAPzEzfDamrxAQMz3q6HSmi1");
+}
+
 lazy_static! {
     /// Map of feature identifiers to user-visible description
     pub static ref FEATURE_NAMES: HashMap<Pubkey, &'static str> = [
@@ -699,6 +703,7 @@ lazy_static! {
         (zero_wormhole_message_timestamps::id(), "use zeroed timestamps in wormhole messages"),
         (undo_move_accumulator_to_end_of_block::id(), "undo accumulator end of block change"),
         (redo_move_accumulator_to_end_of_block::id(), "redo accumulator end of block change"),
+        (add_publisher_stake_caps_to_the_accumulator::id(), "add publisher stake caps to the accumulator")
         /*************** ADD NEW FEATURES HERE ***************/
     ]
     .iter()

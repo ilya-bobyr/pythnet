@@ -107,6 +107,8 @@ git = "https://github.com/ilya-bobyr/pyth-client"
 branch = "pythnet-update-oracle-v2.33.1"
 
 [patch.crates-io]
+serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", tag = "v2.17.1" }
+
 # We include a number of crates as our dependencies above from crates.io:
 #
 #  * spl-associated-token-account

@@ -6,8 +6,9 @@ use {
     log::*,
     pyth_oracle::validator::AggregationError,
     pythnet_sdk::{
-        accumulators::{merkle::MerkleTree, Accumulator},
+        accumulators::{merkle::MerkleAccumulator, Accumulator},
         hashers::keccak256_160::Keccak160,
+        publisher_stake_caps::StakeCapParameters,
         wormhole::{AccumulatorSequenceTracker, MessageData, PostedMessageUnreliableData},
     },
     solana_measure::measure::Measure,
@@ -43,6 +44,12 @@ lazy_static! {
     pub static ref ORACLE_PID: Pubkey = env_pubkey_or(
         "ORACLE_PID",
         "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH"
+            .parse()
+            .unwrap(),
+    );
+    pub static ref STAKE_CAPS_PARAMETERS_ADDR: Pubkey = env_pubkey_or(
+        "STAKE_CAPS_PARAMETERS_ADDR",
+        "879ZVNagiWaAKsWDjGVf8pLq1wUBeBz7sREjUh3hrU36"
             .parse()
             .unwrap(),
     );
@@ -123,6 +130,10 @@ pub fn get_accumulator_keys() -> Vec<(
         ("ACCUMULATOR_SEQUENCE_ADDR", Ok(*ACCUMULATOR_SEQUENCE_ADDR)),
         ("WORMHOLE_PID", Ok(*WORMHOLE_PID)),
         ("ORACLE_PID", Ok(*ORACLE_PID)),
+        (
+            "STAKE_CAPS_PARAMETERS_ADDR",
+            Ok(*STAKE_CAPS_PARAMETERS_ADDR),
+        ),
     ]
 }
 
@@ -258,7 +269,7 @@ pub fn update_v1(
     // set filters our messages so this does not pose a security risk.
     let mut measure = Measure::start("create_accumulator");
 
-    let maybe_accumulator = MerkleTree::<Keccak160>::from_set(messages.into_iter());
+    let maybe_accumulator = MerkleAccumulator::<Keccak160>::from_set(messages.into_iter());
 
     measure.stop();
     debug!("Accumulator: Created accumulator in {}us", measure.as_us());
@@ -294,7 +305,7 @@ pub fn update_v1(
 /// TODO: Safe integer conversion checks if any are missed.
 fn post_accumulator_attestation(
     bank: &Bank,
-    acc: MerkleTree<Keccak160>,
+    acc: MerkleAccumulator<Keccak160>,
     ring_index: u32,
 ) -> std::result::Result<(), AccumulatorUpdateErrorV1> {
     // Wormhole uses a Sequence account that is incremented each time a message is posted. As
@@ -405,10 +416,15 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
         measure.as_us()
     );
 
-    let mut measure = Measure::start("update_v2_aggregate_price");
-
     let mut any_v1_aggregations = false;
     let mut v2_messages = Vec::new();
+
+    if let Some(publisher_stake_caps_message) = compute_publisher_stake_caps(bank, &accounts) {
+        info!("PublisherStakeCaps: Adding publisher stake caps to the accumulator");
+        v2_messages.push(publisher_stake_caps_message);
+    }
+
+    let mut measure = Measure::start("update_v2_aggregate_price");
 
     for (pubkey, mut account) in accounts {
         let mut price_account_data = account.data().to_owned();
@@ -442,4 +458,43 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
     );
 
     update_v1(bank, &v2_messages, any_v1_aggregations)
+}
+
+pub fn compute_publisher_stake_caps(
+    bank: &Bank,
+    accounts: &[(Pubkey, AccountSharedData)],
+) -> Option<Vec<u8>> {
+    let mut measure = Measure::start("compute_publisher_stake_caps");
+
+    let parameters: StakeCapParameters = {
+        let data = bank
+            .get_account_with_fixed_root(&STAKE_CAPS_PARAMETERS_ADDR)
+            .unwrap_or_default();
+        let data = data.data();
+        solana_sdk::borsh::try_from_slice_unchecked(data).unwrap_or_default()
+    };
+
+    let message = pyth_oracle::validator::compute_publisher_stake_caps(
+        accounts.iter().map(|(_, account)| account.data()),
+        bank.clock().unix_timestamp,
+        parameters.m,
+        parameters.z,
+    );
+
+    measure.stop();
+    debug!(
+        "PublisherStakeCaps: Computed publisher stake caps with m : {} and z : {} in {} us",
+        parameters.m,
+        parameters.z,
+        measure.as_us()
+    );
+
+    if bank
+        .feature_set
+        .is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
+    {
+        Some(message)
+    } else {
+        None
+    }
 }

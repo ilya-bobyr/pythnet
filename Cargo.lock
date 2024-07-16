@@ -508,8 +508,18 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15bf3650200d8bffa99015595e10f1fbd17de07abbc25bb067da79e769939bfa"
 dependencies = [
- "borsh-derive",
+ "borsh-derive 0.9.3",
  "hashbrown 0.11.2",
+]
+
+[[package]]
+name = "borsh"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4114279215a005bc675e386011e594e1d9b800918cea18fcadadcce864a2046b"
+dependencies = [
+ "borsh-derive 0.10.3",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -518,8 +528,21 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6441c552f230375d18e3cc377677914d2ca2b0d36e52129fe15450a2dce46775"
 dependencies = [
- "borsh-derive-internal",
- "borsh-schema-derive-internal",
+ "borsh-derive-internal 0.9.3",
+ "borsh-schema-derive-internal 0.9.3",
+ "proc-macro-crate 0.1.5",
+ "proc-macro2 1.0.86",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0754613691538d51f329cce9af41d7b7ca150bc973056f1156611489475f54f7"
+dependencies = [
+ "borsh-derive-internal 0.10.3",
+ "borsh-schema-derive-internal 0.10.3",
  "proc-macro-crate 0.1.5",
  "proc-macro2 1.0.86",
  "syn 1.0.109",
@@ -537,10 +560,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "borsh-derive-internal"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afb438156919598d2c7bad7e1c0adf3d26ed3840dbc010db1a882a65583ca2fb"
+dependencies = [
+ "proc-macro2 1.0.86",
+ "quote 1.0.36",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "borsh-schema-derive-internal"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdbd5696d8bfa21d53d9fe39a714a18538bad11492a42d066dbbc395fb1951c0"
+dependencies = [
+ "proc-macro2 1.0.86",
+ "quote 1.0.36",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "borsh-schema-derive-internal"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "634205cc43f74a1b9046ef87c4540ebda95696ec0f315024860cad7c5b0f5ccd"
 dependencies = [
  "proc-macro2 1.0.86",
  "quote 1.0.36",
@@ -582,19 +627,18 @@ checksum = "ba3569f383e8f1598449f1a423e72e99569137b47740b1da11ef19af3d5c3223"
 dependencies = [
  "lazy_static",
  "memchr",
- "regex-automata",
+ "regex-automata 0.1.10",
  "serde",
 ]
 
 [[package]]
 name = "bstr"
-version = "1.4.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d4260bcc2e8fc9df1eac4919a720effeb63a3f0952f5bf4944adfa18897f09"
+checksum = "6798148dccfbff0fae41c7574d2fa8f1ef3492fba0face179de5d8d447d67b05"
 dependencies = [
  "memchr",
- "once_cell",
- "regex-automata",
+ "regex-automata 0.3.9",
  "serde",
 ]
 
@@ -1320,9 +1364,9 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
 name = "dyn-clone"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "545b22097d44f8a9581187cdf93de7a71e4722bf51200cfaba810865b49a495d"
+checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
 name = "eager"
@@ -3556,6 +3600,7 @@ dependencies = [
 [[package]]
 name = "pyth-oracle"
 version = "2.26.0"
+source = "git+https://github.com/pyth-network/pyth-client.git?branch=feat/publisher-caps#170afdec9f5434deb3c242765ca409b180f306f7"
 dependencies = [
  "bindgen 0.60.1",
  "bitflags 2.6.0",
@@ -3563,27 +3608,9 @@ dependencies = [
  "byteorder",
  "num-derive",
  "num-traits",
- "pythnet-sdk 1.13.6 (git+https://github.com/pyth-network/pyth-crosschain?rev=60144002053a93f424be70decd8a8ccb8d618d81)",
+ "pythnet-sdk 2.1.0",
  "solana-program 1.14.17",
  "solana-sdk 1.14.17",
- "thiserror",
-]
-
-[[package]]
-name = "pythnet-sdk"
-version = "1.13.6"
-source = "git+https://github.com/pyth-network/pyth-crosschain?rev=60144002053a93f424be70decd8a8ccb8d618d81#60144002053a93f424be70decd8a8ccb8d618d81"
-dependencies = [
- "bincode",
- "borsh",
- "bytemuck",
- "byteorder",
- "fast-math",
- "hex",
- "rustc_version 0.4.0",
- "serde",
- "sha3 0.10.8",
- "slow_primes",
  "thiserror",
 ]
 
@@ -3593,7 +3620,7 @@ version = "1.13.6"
 source = "git+https://github.com/pyth-network/pyth-crosschain?rev=e670f57f89b05398ca352e4accb1e32724a8e1b4#e670f57f89b05398ca352e4accb1e32724a8e1b4"
 dependencies = [
  "bincode",
- "borsh",
+ "borsh 0.9.3",
  "bytemuck",
  "fast-math",
  "hex",
@@ -3603,6 +3630,24 @@ dependencies = [
  "sha3 0.10.8",
  "slow_primes",
  "wormhole-sdk",
+]
+
+[[package]]
+name = "pythnet-sdk"
+version = "2.1.0"
+source = "git+https://github.com/pyth-network/pyth-crosschain?branch=feat/publisher-caps#3522f2940522e49aa56038e1000ea78f2e489d20"
+dependencies = [
+ "bincode",
+ "borsh 0.10.3",
+ "bytemuck",
+ "byteorder",
+ "fast-math",
+ "hex",
+ "rustc_version 0.4.0",
+ "serde",
+ "sha3 0.10.8",
+ "slow_primes",
+ "thiserror",
 ]
 
 [[package]]
@@ -3932,6 +3977,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
 
 [[package]]
+name = "regex-automata"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59b23e92ee4318893fa3fe3e6fb365258efbfe6ac6ab30f090cdcbb7aa37efa9"
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4180,9 +4231,9 @@ dependencies = [
 
 [[package]]
 name = "schemars"
-version = "0.8.15"
+version = "0.8.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f7b0ce13155372a76ee2e1c5ffba1fe61ede73fbea5630d61eee6fac4929c0c"
+checksum = "45a28f4c49489add4ce10783f7911893516f15afe45d015608d41faca6bc4d29"
 dependencies = [
  "dyn-clone",
  "schemars_derive",
@@ -4192,9 +4243,9 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "0.8.15"
+version = "0.8.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e85e2a16b12bdb763244c69ab79363d71db2b4b918a2def53f80b02e0574b13c"
+checksum = "c767fd6fa65d9ccf9cf026122c1b555f2ef9a4f0cea69da4d7dbc3e258d30967"
 dependencies = [
  "proc-macro2 1.0.86",
  "quote 1.0.36",
@@ -4732,7 +4783,7 @@ dependencies = [
 name = "solana-banks-client"
 version = "1.14.173"
 dependencies = [
- "borsh",
+ "borsh 0.9.3",
  "futures 0.3.21",
  "solana-banks-interface",
  "solana-banks-server",
@@ -5876,8 +5927,8 @@ dependencies = [
  "bincode",
  "bitflags 1.3.2",
  "blake3",
- "borsh",
- "borsh-derive",
+ "borsh 0.9.3",
+ "borsh-derive 0.9.3",
  "bs58",
  "bv",
  "bytemuck",
@@ -5925,8 +5976,8 @@ dependencies = [
  "bincode",
  "bitflags 1.3.2",
  "blake3",
- "borsh",
- "borsh-derive",
+ "borsh 0.9.3",
+ "borsh-derive 0.9.3",
  "bs58",
  "bv",
  "bytemuck",
@@ -6153,7 +6204,7 @@ dependencies = [
  "once_cell",
  "ouroboros",
  "pyth-oracle",
- "pythnet-sdk 1.13.6 (git+https://github.com/pyth-network/pyth-crosschain?rev=e670f57f89b05398ca352e4accb1e32724a8e1b4)",
+ "pythnet-sdk 1.13.6",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rayon",
@@ -6198,7 +6249,7 @@ dependencies = [
  "base64 0.13.0",
  "bincode",
  "bitflags 1.3.2",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "bytemuck",
  "byteorder",
@@ -6248,7 +6299,7 @@ dependencies = [
  "base64 0.13.0",
  "bincode",
  "bitflags 1.3.2",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "bytemuck",
  "byteorder",
@@ -6560,7 +6611,7 @@ dependencies = [
  "Inflector",
  "base64 0.13.0",
  "bincode",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "lazy_static",
  "log",
@@ -6814,7 +6865,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbc000f0fdf1f12f99d77d398137c1751345b18c88258ce0f99b7872cf6c9bd6"
 dependencies = [
  "assert_matches",
- "borsh",
+ "borsh 0.9.3",
  "num-derive",
  "num-traits",
  "solana-program 1.14.17",
@@ -8158,7 +8209,7 @@ version = "0.1.0"
 source = "git+https://github.com/wormhole-foundation/wormhole?tag=v2.17.1#3e423a75180f9da69263279e9ffce47b1858ae78"
 dependencies = [
  "anyhow",
- "bstr 1.4.0",
+ "bstr 1.6.0",
  "schemars",
  "serde",
  "serde_wormhole",

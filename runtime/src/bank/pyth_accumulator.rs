@@ -421,7 +421,7 @@ pub fn compute_publisher_stake_caps(
         .iter()
         .map(|(_, account)| account.data().borrow())
         .collect();
-    let message = pyth_oracle::validator::compute_publisher_caps(account_datas, timestamp);
+    let message = pyth_oracle::validator::compute_publisher_stake_caps(account_datas, timestamp);
 
     if is_active {
         messages.push(message);

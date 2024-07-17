@@ -373,7 +373,7 @@ fn post_accumulator_attestation(
 }
 
 pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV1> {
-    let accounts: Vec<(Pubkey, AccountSharedData)> = bank
+    let accounts = bank
         .get_program_accounts(&ORACLE_PUBKEY, &ScanConfig::new(true))
         .map_err(AccumulatorUpdateErrorV1::GetProgramAccounts)?;
 

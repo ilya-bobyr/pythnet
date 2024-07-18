@@ -54,6 +54,34 @@ fn create_message_buffer_bytes(msgs: Vec<Vec<u8>>) -> Vec<u8> {
     buffer
 }
 
+fn get_acc_sequence_tracker(bank: &Bank) -> AccumulatorSequenceTracker {
+    let account = bank
+        .get_account(&Pubkey::new_from_array(
+            pythnet_sdk::pythnet::ACCUMULATOR_SEQUENCE_ADDR,
+        ))
+        .unwrap();
+    AccumulatorSequenceTracker::try_from_slice(&mut account.data()).unwrap()
+}
+
+fn get_wormhole_message_account(bank: &Bank, ring_index: u32) -> AccountSharedData {
+    let (wormhole_message_pubkey, _bump) = Pubkey::find_program_address(
+        &[b"AccumulatorMessage", &ring_index.to_be_bytes()],
+        &Pubkey::new_from_array(pythnet_sdk::pythnet::WORMHOLE_PID),
+    );
+    bank.get_account(&wormhole_message_pubkey)
+        .unwrap_or_default()
+}
+
+fn get_accumulator_state(bank: &Bank, ring_index: u32) -> Vec<u8> {
+    let (accumulator_state_pubkey, _) = Pubkey::find_program_address(
+        &[b"AccumulatorState", &ring_index.to_be_bytes()],
+        &solana_sdk::system_program::id(),
+    );
+
+    let account = bank.get_account(&accumulator_state_pubkey).unwrap();
+    account.data().to_vec()
+}
+
 #[test]
 fn test_update_accumulator_sysvar() {
     let leader_pubkey = solana_sdk::pubkey::new_rand();

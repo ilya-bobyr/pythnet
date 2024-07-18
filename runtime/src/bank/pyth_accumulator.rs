@@ -19,6 +19,7 @@ use {
     },
     std::env::{self, VarError},
 };
+use std::borrow::Borrow;
 
 pub const ACCUMULATOR_RING_SIZE: u32 = 10_000;
 

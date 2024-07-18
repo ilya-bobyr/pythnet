@@ -8,9 +8,9 @@ use crate::{
 use byteorder::ByteOrder;
 use byteorder::{LittleEndian, ReadBytesExt};
 use itertools::Itertools;
-// use pyth_oracle::PythOracleSerialize;
-// use pyth_oracle::{solana_program::account_info::AccountInfo, PriceAccountFlags};
-// use pyth_oracle::{PriceAccount, PythAccount};
+use pyth_oracle::PythOracleSerialize;
+use pyth_oracle::{solana_program::account_info::AccountInfo, PriceAccountFlags};
+use pyth_oracle::{PriceAccount, PythAccount};
 use pythnet_sdk::{
     accumulators::{merkle::MerkleAccumulator, Accumulator},
     hashers::{keccak256_160::Keccak160, Hasher},
@@ -35,62 +35,23 @@ use std::{io::Read, mem::size_of, sync::Arc};
 //
 // NOTE: This was serialized by hand, but should be replaced with the pythnet-sdk
 // serializer once implemented.
-// fn create_message_buffer_bytes(msgs: Vec<Vec<u8>>) -> Vec<u8> {
-//     let mut buffer = Vec::new();
-//     let preimage = b"account:MessageBuffer";
-//     buffer.extend_from_slice(&hashv(&[preimage]).to_bytes()[..8]);
-//     buffer.extend_from_slice(&[0, 1, 10, 2]);
-//     let mut sums: Vec<u16> = msgs.iter().map(|m| m.len() as u16).collect();
-//     sums.resize(255, 0u16);
-//     buffer.extend(
-//         sums.into_iter()
-//             .scan(0, |acc, v| {
-//                 *acc += v;
-//                 Some(if v == 0 { v } else { *acc }.to_le_bytes())
-//             })
-//             .flatten(),
-//     );
-//     buffer.extend(msgs.into_iter().flatten());
-//     buffer
-// }
-
-// fn get_acc_sequence_tracker(bank: &Bank) -> AccumulatorSequenceTracker {
-//     let account = bank
-//         .get_account(&Pubkey::new_from_array(
-//             pythnet_sdk::pythnet::ACCUMULATOR_SEQUENCE_ADDR,
-//         ))
-//         .unwrap();
-//     AccumulatorSequenceTracker::try_from_slice(&mut account.data()).unwrap()
-// }
-
-// fn get_wormhole_message_account(bank: &Bank, ring_index: u32) -> AccountSharedData {
-//     let (wormhole_message_pubkey, _bump) = Pubkey::find_program_address(
-//         &[b"AccumulatorMessage", &ring_index.to_be_bytes()],
-//         &Pubkey::new_from_array(pythnet_sdk::pythnet::WORMHOLE_PID),
-//     );
-//     bank.get_account(&wormhole_message_pubkey)
-//         .unwrap_or_default()
-// }
-
-// fn get_accumulator_state(bank: &Bank, ring_index: u32) -> Vec<u8> {
-//     let (accumulator_state_pubkey, _) = Pubkey::find_program_address(
-//         &[b"AccumulatorState", &ring_index.to_be_bytes()],
-//         &solana_sdk::system_program::id(),
-//     );
-
-//     let account = bank.get_account(&accumulator_state_pubkey).unwrap();
-//     account.data().to_vec()
-// }
-
-#[test]
-fn test_get_accumulator_state(){
-    let index = 0;
-    let (accumulator_state_pubkey, _) = Pubkey::find_program_address(
-        &[b"AccumulatorState", &(2386_u32).to_be_bytes()],
-        &solana_sdk::system_program::id(),
+fn create_message_buffer_bytes(msgs: Vec<Vec<u8>>) -> Vec<u8> {
+    let mut buffer = Vec::new();
+    let preimage = b"account:MessageBuffer";
+    buffer.extend_from_slice(&hashv(&[preimage]).to_bytes()[..8]);
+    buffer.extend_from_slice(&[0, 1, 10, 2]);
+    let mut sums: Vec<u16> = msgs.iter().map(|m| m.len() as u16).collect();
+    sums.resize(255, 0u16);
+    buffer.extend(
+        sums.into_iter()
+            .scan(0, |acc, v| {
+                *acc += v;
+                Some(if v == 0 { v } else { *acc }.to_le_bytes())
+            })
+            .flatten(),
     );
-    println!("{:?}", accumulator_state_pubkey);
-
+    buffer.extend(msgs.into_iter().flatten());
+    buffer
 }
 
 #[test]

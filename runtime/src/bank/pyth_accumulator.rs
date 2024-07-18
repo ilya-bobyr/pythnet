@@ -373,6 +373,8 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
     update_v1(bank, &v2_messages, any_v1_aggregations)
 }
 
+pub const Z : u64 = 10;
+
 pub fn compute_publisher_stake_caps(
     accounts : &Vec<(Pubkey, AccountSharedData)>, 
     timestamp : i64,
@@ -384,7 +386,7 @@ pub fn compute_publisher_stake_caps(
         .iter()
         .map(|(_, account)| account.data().borrow())
         .collect();
-    let message = pyth_oracle::validator::compute_publisher_stake_caps(account_datas, timestamp);
+    let message = pyth_oracle::validator::compute_publisher_stake_caps(account_datas, timestamp, Z);
 
     if is_active {
         info!("Adding publisher stake caps to the accumulator");

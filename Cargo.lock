@@ -3600,7 +3600,7 @@ dependencies = [
 [[package]]
 name = "pyth-oracle"
 version = "2.26.0"
-source = "git+https://github.com/pyth-network/pyth-client.git?branch=feat/publisher-caps#706a29c55b5114af303a1dbac684c50b262f72aa"
+source = "git+https://github.com/pyth-network/pyth-client.git?branch=feat/publisher-caps#fe64764a92e7212fc9b737070b7d3e288bcc4730"
 dependencies = [
  "bindgen 0.60.1",
  "bitflags 2.6.0",
@@ -3617,7 +3617,7 @@ dependencies = [
 [[package]]
 name = "pythnet-sdk"
 version = "1.13.6"
-source = "git+https://github.com/pyth-network/pyth-crosschain?rev=e670f57f89b05398ca352e4accb1e32724a8e1b4#e670f57f89b05398ca352e4accb1e32724a8e1b4"
+source = "git+https://github.com/pyth-network/pyth-crosschain?rev=a4fafa5dacd076a4d0656549d9a182bfba07f415#a4fafa5dacd076a4d0656549d9a182bfba07f415"
 dependencies = [
  "bincode",
  "borsh 0.9.3",

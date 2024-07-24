@@ -178,7 +178,7 @@ pub fn update_v1<'a>(
                 let mut header_begin = header_len;
                 let mut inputs = Vec::new();
                 let mut cur_end_offsets_idx: usize = 0;
-                while let Some(end) = cursor.read_u16::<LittleEndian>().ok() {
+                while let Ok(end) = cursor.read_u16::<LittleEndian>() {
                     if end == 0 || cur_end_offsets_idx == (u8::MAX as usize) {
                         break;
                     }

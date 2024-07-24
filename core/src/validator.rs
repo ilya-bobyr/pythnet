@@ -75,7 +75,7 @@ use {
         accounts_db::{AccountShrinkThreshold, AccountsDbConfig},
         accounts_index::AccountSecondaryIndexes,
         accounts_update_notifier_interface::AccountsUpdateNotifier,
-        bank::Bank,
+        bank::{pyth_accumulator, Bank},
         bank_forks::BankForks,
         commitment::BlockCommitmentCache,
         cost_model::CostModel,

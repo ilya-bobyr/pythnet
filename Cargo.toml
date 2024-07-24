@@ -97,9 +97,16 @@ exclude = [
 # This prevents a Travis CI error when building for Windows.
 resolver = "2"
 
-[patch.crates-io]
-serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", tag = "v2.17.1" }
+# At the moment, there is no `oracle-v2.33.1` release in the
+# `pyth-network/pyth-client` repository.  This is an unreleased version that is
+# almost identical to `oracle-v2.33.0`, except that it removes strict version
+# constraints from the Solana dependencies.
+#
+[patch."https://github.com/pyth-network/pyth-client".pyth-oracle]
+git = "https://github.com/ilya-bobyr/pyth-client"
+branch = "pythnet-update-oracle-v2.33.1"
 
+[patch.crates-io]
 # We include a number of crates as our dependencies above from crates.io:
 #
 #  * spl-associated-token-account

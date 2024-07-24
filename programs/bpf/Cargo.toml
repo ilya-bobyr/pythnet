@@ -100,6 +100,12 @@ members = [
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
+# See root level `Cargo.toml` for an explanation of this patch.  Keep them in
+# sync.
+[patch."https://github.com/pyth-network/pyth-client".pyth-oracle]
+git = "https://github.com/ilya-bobyr/pyth-client"
+branch = "pythnet-update-oracle-v2.33.1"
+
 [patch.crates-io]
 # See root level `Cargo.toml` for an explanation of this patch.  Keep them in
 # sync.

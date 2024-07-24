@@ -76,7 +76,7 @@ use {
         accounts_db::{AccountShrinkThreshold, AccountsDbConfig},
         accounts_index::AccountSecondaryIndexes,
         accounts_update_notifier_interface::AccountsUpdateNotifier,
-        bank::Bank,
+        bank::{pyth_accumulator, Bank},
         bank_forks::BankForks,
         commitment::BlockCommitmentCache,
         cost_model::CostModel,
@@ -1535,15 +1535,12 @@ fn load_blockstore(
         }
     }
 
-    {
-        let bank = bank_forks.write().unwrap().working_bank();
-        for (key_name, pk_res) in bank.get_accumulator_keys() {
-            match pk_res {
-                Ok(pk) => info!("Accumulator {}: {}", key_name, pk),
-                Err(err) => {
-                    error!("Failed to get Accumulator {}: {:?}", key_name, err);
-                    std::process::abort();
-                }
+    for (key_name, pk_res) in pyth_accumulator::get_accumulator_keys() {
+        match pk_res {
+            Ok(pk) => info!("Accumulator {}: {}", key_name, pk),
+            Err(err) => {
+                error!("Failed to get Accumulator {}: {:?}", key_name, err);
+                std::process::abort();
             }
         }
     }

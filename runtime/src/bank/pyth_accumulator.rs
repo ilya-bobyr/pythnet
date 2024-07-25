@@ -1,9 +1,7 @@
-use std::borrow::Borrow;
 use {
     super::Bank,
     crate::accounts_index::{ScanConfig, ScanError},
-    byteorder::LittleEndian,
-    byteorder::ReadBytesExt,
+    byteorder::{LittleEndian, ReadBytesExt},
     log::*,
     pyth_oracle::validator::AggregationError,
     pythnet_sdk::{
@@ -18,7 +16,10 @@ use {
         hash::hashv,
         pubkey::Pubkey,
     },
-    std::env::{self, VarError},
+    std::{
+        borrow::Borrow,
+        env::{self, VarError},
+    },
 };
 
 pub const ACCUMULATOR_RING_SIZE: u32 = 10_000;
@@ -408,7 +409,7 @@ pub fn compute_publisher_stake_caps(
         parameters.z,
     );
 
-    bank
-        .feature_set
-        .is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id()).then_some(message)
+    bank.feature_set
+        .is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
+        .then_some(message)
 }

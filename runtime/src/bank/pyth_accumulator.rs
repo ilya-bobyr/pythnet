@@ -136,7 +136,7 @@ pub fn get_accumulator_keys() -> Vec<(
     ]
 }
 
-pub fn update_v1<'a>(
+pub fn update_v1(
     bank: &Bank,
     v2_messages: &[Vec<u8>],
     use_message_buffers: bool,

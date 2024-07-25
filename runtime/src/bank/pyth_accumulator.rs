@@ -16,10 +16,7 @@ use {
         hash::hashv,
         pubkey::Pubkey,
     },
-    std::{
-        borrow::Borrow,
-        env::{self, VarError},
-    },
+    std::env::{self, VarError},
 };
 
 pub const ACCUMULATOR_RING_SIZE: u32 = 10_000;
@@ -409,7 +406,12 @@ pub fn compute_publisher_stake_caps(
         parameters.z,
     );
 
-    bank.feature_set
+    if bank
+        .feature_set
         .is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
-        .then_some(message)
+    {
+        Some(message)
+    } else {
+        None
+    }
 }

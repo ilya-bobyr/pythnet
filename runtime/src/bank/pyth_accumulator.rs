@@ -414,12 +414,7 @@ pub fn compute_publisher_stake_caps(
         parameters.z,
     );
 
-    if bank
+    bank
         .feature_set
-        .is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
-    {
-        return Some(message);
-    } else {
-        return None;
-    }
+        .is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id()).then_some(message)
 }

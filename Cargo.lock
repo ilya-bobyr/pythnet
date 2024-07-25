@@ -3599,8 +3599,8 @@ dependencies = [
 
 [[package]]
 name = "pyth-oracle"
-version = "2.26.0"
-source = "git+https://github.com/pyth-network/pyth-client.git?branch=feat/publisher-caps#fe64764a92e7212fc9b737070b7d3e288bcc4730"
+version = "2.32.0"
+source = "git+https://github.com/pyth-network/pyth-client.git?branch=feat/publisher-caps#f6de9ed368a7aa0740298740c8585cf82273c9fc"
 dependencies = [
  "bindgen 0.60.1",
  "bitflags 2.6.0",
@@ -3617,7 +3617,7 @@ dependencies = [
 [[package]]
 name = "pythnet-sdk"
 version = "1.13.6"
-source = "git+https://github.com/pyth-network/pyth-crosschain?rev=a4fafa5dacd076a4d0656549d9a182bfba07f415#a4fafa5dacd076a4d0656549d9a182bfba07f415"
+source = "git+https://github.com/pyth-network/pyth-crosschain?rev=33f901aa45f4f0005aa5a84a1479b78ca9033074#33f901aa45f4f0005aa5a84a1479b78ca9033074"
 dependencies = [
  "bincode",
  "borsh 0.9.3",
@@ -3635,7 +3635,7 @@ dependencies = [
 [[package]]
 name = "pythnet-sdk"
 version = "2.1.0"
-source = "git+https://github.com/pyth-network/pyth-crosschain?branch=feat/publisher-caps#76a9a50e51eed23fa123af08db7b1f79d708544e"
+source = "git+https://github.com/pyth-network/pyth-crosschain?branch=feat/publisher-caps#a9e93d96418101b3caa8e7ffaaef21d344184eb9"
 dependencies = [
  "bincode",
  "borsh 0.10.3",

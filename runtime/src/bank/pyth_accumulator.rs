@@ -394,21 +394,15 @@ pub fn compute_publisher_stake_caps(
             .get_account_with_fixed_root(&STAKE_CAPS_PARAMETERS_ADDR)
             .unwrap_or_default();
         let data = data.data();
-        solana_sdk::borsh::try_from_slice_unchecked(data).unwrap_or(StakeCapParameters {
-            _discriminator: 0,
-            _current_authority: [0u8; 32],
-            z: 1,
-            m: 1_000_000_000,
-        })
+        solana_sdk::borsh::try_from_slice_unchecked(data).unwrap_or_default()
     };
 
     info!(
         "PublisherStakeCaps: Computing publisher stake caps with m : {} and z : {}",
         parameters.m, parameters.z
     );
-    let account_datas: Vec<&[u8]> = accounts.iter().map(|(_, account)| account.data()).collect();
     let message = pyth_oracle::validator::compute_publisher_stake_caps(
-        account_datas,
+        accounts.iter().map(|(_, account)| account.data()),
         bank.clock().unix_timestamp,
         parameters.m,
         parameters.z,

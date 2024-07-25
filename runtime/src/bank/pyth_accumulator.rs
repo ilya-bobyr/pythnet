@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use {
     super::Bank,
     crate::accounts_index::{ScanConfig, ScanError},
@@ -8,8 +9,8 @@ use {
     pythnet_sdk::{
         accumulators::{merkle::MerkleAccumulator, Accumulator},
         hashers::keccak256_160::Keccak160,
+        publisher_stake_caps::StakeCapParameters,
         wormhole::{AccumulatorSequenceTracker, MessageData, PostedMessageUnreliableData},
-        publisher_stake_caps::StakeCapParameters
     },
     solana_sdk::{
         account::{AccountSharedData, ReadableAccount},
@@ -19,7 +20,6 @@ use {
     },
     std::env::{self, VarError},
 };
-use std::borrow::Borrow;
 
 pub const ACCUMULATOR_RING_SIZE: u32 = 10_000;
 
@@ -46,16 +46,13 @@ lazy_static! {
             .parse()
             .unwrap(),
     );
-
     pub static ref STAKE_CAPS_PARAMETERS_ADDR: Pubkey = env_pubkey_or(
         "STAKE_CAPS_PARAMETERS_ADDR",
         "879ZVNagiWaAKsWDjGVf8pLq1wUBeBz7sREjUh3hrU36"
-        .parse()
-        .unwrap(),
+            .parse()
+            .unwrap(),
     );
 }
-
-
 
 /// Accumulator specific error type. It would be nice to use `transaction::Error` but it does
 /// not include any `Custom` style variant we can leverage, so we introduce our own.
@@ -132,7 +129,10 @@ pub fn get_accumulator_keys() -> Vec<(
         ("ACCUMULATOR_SEQUENCE_ADDR", Ok(*ACCUMULATOR_SEQUENCE_ADDR)),
         ("WORMHOLE_PID", Ok(*WORMHOLE_PID)),
         ("ORACLE_PID", Ok(*ORACLE_PID)),
-        ("STAKE_CAPS_PARAMETERS_ADDR", Ok(*STAKE_CAPS_PARAMETERS_ADDR)),
+        (
+            "STAKE_CAPS_PARAMETERS_ADDR",
+            Ok(*STAKE_CAPS_PARAMETERS_ADDR),
+        ),
     ]
 }
 
@@ -353,8 +353,10 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
     let mut any_v1_aggregations = false;
     let mut v2_messages = Vec::new();
 
-    let add_publisher_stake_caps = bank.feature_set.is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id());
-    compute_publisher_stake_caps(bank, &accounts, bank.clock().unix_timestamp, &mut v2_messages, add_publisher_stake_caps);
+    if let Some(publisher_stake_caps_message) = compute_publisher_stake_caps(bank, &accounts) {
+        info!("PublisherStakeCaps: Adding publisher stake caps to the accumulator");
+        v2_messages.push(publisher_stake_caps_message);
+    }
 
     for (pubkey, mut account) in accounts {
         let mut price_account_data = account.data().to_owned();
@@ -384,30 +386,40 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
 }
 
 pub fn compute_publisher_stake_caps(
-    bank : &Bank,
-    accounts : &[(Pubkey, AccountSharedData)], 
-    timestamp : i64,
-    messages : &mut Vec<Vec<u8>>,
-    is_active : bool
-) {
+    bank: &Bank,
+    accounts: &[(Pubkey, AccountSharedData)],
+) -> Option<Vec<u8>> {
     let parameters: StakeCapParameters = {
         let data = bank
-        .get_account_with_fixed_root(&STAKE_CAPS_PARAMETERS_ADDR)
-        .unwrap_or_default();
-    let data = data.data();
-    solana_sdk::borsh::try_from_slice_unchecked(data)
-        .unwrap_or(StakeCapParameters { _discriminator: 0, _current_authority : [0u8;32], z: 1, m : 1_000_000_000 })
-};
+            .get_account_with_fixed_root(&STAKE_CAPS_PARAMETERS_ADDR)
+            .unwrap_or_default();
+        let data = data.data();
+        solana_sdk::borsh::try_from_slice_unchecked(data).unwrap_or(StakeCapParameters {
+            _discriminator: 0,
+            _current_authority: [0u8; 32],
+            z: 1,
+            m: 1_000_000_000,
+        })
+    };
 
-    info!("Computing publisher stake caps with m : {} and z : {}", parameters.m, parameters.z);
-    let account_datas : Vec<&[u8]> = accounts
-        .iter()
-        .map(|(_, account)| account.data())
-        .collect();
-    let message = pyth_oracle::validator::compute_publisher_stake_caps(account_datas, timestamp, parameters.m, parameters.z);
+    info!(
+        "PublisherStakeCaps: Computing publisher stake caps with m : {} and z : {}",
+        parameters.m, parameters.z
+    );
+    let account_datas: Vec<&[u8]> = accounts.iter().map(|(_, account)| account.data()).collect();
+    let message = pyth_oracle::validator::compute_publisher_stake_caps(
+        account_datas,
+        bank.clock().unix_timestamp,
+        parameters.m,
+        parameters.z,
+    );
 
-    if is_active {
-        info!("Adding publisher stake caps to the accumulator");
-        messages.push(message);
+    if bank
+        .feature_set
+        .is_active(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
+    {
+        return Some(message);
+    } else {
+        return None;
     }
 }

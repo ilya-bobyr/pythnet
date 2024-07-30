@@ -102,6 +102,14 @@ fn get_accumulator_state(bank: &Bank, ring_index: u32) -> Vec<u8> {
     account.data().to_vec()
 }
 
+fn activate_feature(bank: &mut Bank, feature_id: &Pubkey) {
+    let feature = Feature {
+        activated_at: Some(30),
+    };
+    bank.store_account(&feature_id, &feature::create_account(&feature, 42));
+    bank.compute_active_feature_set(true);
+}
+
 #[test]
 fn test_update_accumulator_sysvar() {
     let leader_pubkey = solana_sdk::pubkey::new_rand();
@@ -193,16 +201,10 @@ fn test_update_accumulator_sysvar() {
     assert_eq!(wormhole_message_account.data().len(), 0);
 
     // Enable Accumulator Feature (42 = random lamport balance, and the meaning of the universe).
-    let feature_id = feature_set::enable_accumulator_sysvar::id();
-    let feature = Feature {
-        activated_at: Some(30),
-    };
-    bank.store_account(&feature_id, &feature::create_account(&feature, 42));
-    bank.compute_active_feature_set(true);
-    for _ in 0..slots_in_epoch {
-        bank = new_from_parent(&Arc::new(bank));
-    }
-
+    activate_feature(&mut bank, &feature_set::enable_accumulator_sysvar::id());
+        for _ in 0..slots_in_epoch {
+                bank = new_from_parent(&Arc::new(bank));
+           }
     // Feature should now be enabled on the new bank as the epoch has changed.
     assert!(bank
         .feature_set
@@ -482,19 +484,8 @@ fn test_update_accumulator_end_of_block() {
     assert_eq!(wormhole_message_account.data().len(), 0);
 
     // Enable Accumulator Features (42 = random lamport balance, and the meaning of the universe).
-    let feature_id = feature_set::enable_accumulator_sysvar::id();
-    let feature = Feature {
-        activated_at: Some(30),
-    };
-    bank.store_account(&feature_id, &feature::create_account(&feature, 42));
-
-    let feature_id = feature_set::move_accumulator_to_end_of_block::id();
-    let feature = Feature {
-        activated_at: Some(30),
-    };
-    bank.store_account(&feature_id, &feature::create_account(&feature, 42));
-
-    bank.compute_active_feature_set(true);
+    activate_feature(&mut bank, & feature_set::enable_accumulator_sysvar::id());
+    activate_feature(&mut bank, & feature_set::move_accumulator_to_end_of_block::id());
     for _ in 0..slots_in_epoch {
         bank = new_from_parent(&Arc::new(bank));
     }
@@ -676,21 +667,6 @@ fn test_update_accumulator_end_of_block() {
     );
 }
 
-#[test]
-fn test_accumulator_v2_all_v2() {
-    test_accumulator_v2([false, false, false, false]);
-}
-
-#[test]
-fn test_accumulator_v2_all_v1() {
-    test_accumulator_v2([true, true, true, true]);
-}
-
-#[test]
-fn test_accumulator_v2_mixed() {
-    test_accumulator_v2([true, true, false, false]);
-}
-
 fn generate_price(bank : &Bank, seeds: &[u8], generate_buffers: bool, publishers : &[Pubkey]) -> (Pubkey, Vec<Vec<u8>>) {
     let (price_feed_key, _bump) = Pubkey::find_program_address(&[seeds], &ORACLE_PID);
     let mut price_feed_account =
@@ -838,6 +814,21 @@ fn check_accumulator_state_matches_messages(bank: &Bank, sequence_tracker_before
     );
 }
 
+#[test]
+fn test_accumulator_v2_all_v2() {
+    test_accumulator_v2([false, false, false, false]);
+}
+
+#[test]
+fn test_accumulator_v2_all_v1() {
+    test_accumulator_v2([true, true, true, true]);
+}
+
+#[test]
+fn test_accumulator_v2_mixed() {
+    test_accumulator_v2([true, true, false, false]);
+}
+
 fn test_accumulator_v2(generate_buffers: [bool; 4]) {
     let leader_pubkey = solana_sdk::pubkey::new_rand();
     let GenesisConfigInfo {
@@ -926,22 +917,16 @@ fn test_publisher_stake_caps() {
         .feature_set
         .is_active(&feature_set::redo_move_accumulator_to_end_of_block::id()));
 
-        let new_m = 1_000_000_000_000;
-        let new_z = 3;
-
+    // We will set the stake cap parameters to this later
+    let new_m = 1_000_000_000_000; 
+    let new_z = 3;
+    // This is an array of tuples where each tuple contains the pubkey of the publisher, the expected cap with default values and the expected cap with the new values.
     let mut publishers_with_expected_caps : [(Pubkey, u64, u64) ; 4] = [
         (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 5 / 4, new_m / 3 + new_m / 4),
         (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 3 / 4, new_m / 3 + new_m / 4),
         (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 3 / 4, new_m / 3 + new_m / 4),
         (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 5 / 4, new_m / 3 + new_m / 4)
     ];
-
-    let expected_caps = [[
-        StakeCapParameters::default().m * 5 / 4,
-        StakeCapParameters::default().m * 3 / 4,
-        StakeCapParameters::default().m * 2 / 4,
-        StakeCapParameters::default().m * 1 / 4,
-    ],[new_m / 3 + new_m / 4,new_m / 3 + new_m / 4,new_m / 3 + new_m / 4,new_m / 3 + new_m / 4 ]];
 
     let prices_with_messages = [
         generate_price(&bank, b"seeds_1", false, &[publishers_with_expected_caps[0].0]),
@@ -950,6 +935,7 @@ fn test_publisher_stake_caps() {
         generate_price(&bank,b"seeds_4", true, &[publishers_with_expected_caps[3].0, publishers_with_expected_caps[1].0, publishers_with_expected_caps[0].0, publishers_with_expected_caps[2].0])
     ];
 
+    // Publishers are sorted in the publisher stake caps message so we sort them here too
     publishers_with_expected_caps.sort_by_key(|(pk,_,_)| *pk);
 
     bank = new_from_parent(&Arc::new(bank)); // Advance slot 1.
@@ -965,22 +951,14 @@ fn test_publisher_stake_caps() {
         .collect::<Vec<_>>();
     assert_eq!(messages.len(), 8);
 
-    let feature_id = feature_set::add_publisher_stake_caps_to_the_accumulator::id();
-    let feature = Feature {
-        activated_at: Some(30),
-    };
-    bank.store_account(&feature_id, &feature::create_account(&feature, 42));
+    // We turn on the feature to add publisher stake caps to the accumulator but it won't be active until next epoch
+    activate_feature(&mut bank, &feature_set::add_publisher_stake_caps_to_the_accumulator::id());
 
-    bank.compute_active_feature_set(true);
-
-    // Trigger Aggregation. We freeze instead of new_from_parent so
+    // Trigger accumulation. We freeze instead of new_from_parent so
     // we can keep access to the bank.
     let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
     bank.freeze();
-
     check_accumulator_state_matches_messages(&bank, &sequence_tracker_before_bank_freeze, &messages);
-
-    // Enable Publisher Stake Caps
 
     for _ in 0..slots_in_epoch {
         bank = new_from_parent(&Arc::new(bank));
@@ -996,18 +974,21 @@ fn test_publisher_stake_caps() {
         result
     };
 
-
+    // Now the messages contain the publisher caps message
     messages.push(&publisher_caps_message);
+    assert_eq!(messages.len(), 9);
 
     let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
     bank.freeze();
     check_accumulator_state_matches_messages(&bank, &sequence_tracker_before_bank_freeze, &messages);
+
     bank = new_from_parent(&Arc::new(bank));
 
-    // Now store the stake cap parameters
+    // Now we update the stake cap parameters
     let mut stake_cap_parameters_account = AccountSharedData::new(42, size_of::<StakeCapParameters>(), &ORACLE_PID);
     stake_cap_parameters_account.set_data(StakeCapParameters{ _discriminator: 0, _current_authority: [0u8;32], m: new_m, z: new_z }.try_to_vec().unwrap());
     bank.store_account(&STAKE_CAPS_PARAMETERS_ADDR, &stake_cap_parameters_account);
+
 
     let publisher_caps_message_with_new_parameters = {
         let mut result = vec![2];
@@ -1019,8 +1000,10 @@ fn test_publisher_stake_caps() {
         result
     };
 
+    // Update the publisher caps message in the message arrays to match the new parameters
     let last_element_index = messages.len() - 1;
     messages[last_element_index] = &publisher_caps_message_with_new_parameters;
+    assert_eq!(messages.len(), 9);
 
     let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
     bank.freeze();

@@ -419,7 +419,6 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
         measure.as_us()
     );
 
-    let mut measure = Measure::start("update_v2_aggregate_price");
 
     let mut any_v1_aggregations = false;
     let mut v2_messages = Vec::new();
@@ -428,6 +427,8 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
         info!("PublisherStakeCaps: Adding publisher stake caps to the accumulator");
         v2_messages.push(publisher_stake_caps_message);
     }
+
+    let mut measure = Measure::start("update_v2_aggregate_price");
 
     for (pubkey, mut account) in accounts {
         let mut price_account_data = account.data().to_owned();
@@ -467,6 +468,8 @@ pub fn compute_publisher_stake_caps(
     bank: &Bank,
     accounts: &[(Pubkey, AccountSharedData)],
 ) -> Option<Vec<u8>> {
+    let mut measure = Measure::start("compute_publisher_stake_caps");
+
     let parameters: StakeCapParameters = {
         let data = bank
             .get_account_with_fixed_root(&STAKE_CAPS_PARAMETERS_ADDR)
@@ -475,15 +478,17 @@ pub fn compute_publisher_stake_caps(
         solana_sdk::borsh::try_from_slice_unchecked(data).unwrap_or_default()
     };
 
-    info!(
-        "PublisherStakeCaps: Computing publisher stake caps with m : {} and z : {}",
-        parameters.m, parameters.z
-    );
     let message = pyth_oracle::validator::compute_publisher_stake_caps(
         accounts.iter().map(|(_, account)| account.data()),
         bank.clock().unix_timestamp,
         parameters.m,
         parameters.z,
+    );
+
+    measure.stop();
+    info!(
+        "PublisherStakeCaps: Computed publisher stake caps with m : {} and z : {} in {} us",
+        parameters.m, parameters.z, measure.as_us()
     );
 
     if bank

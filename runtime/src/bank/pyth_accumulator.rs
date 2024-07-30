@@ -485,7 +485,7 @@ pub fn compute_publisher_stake_caps(
     );
 
     measure.stop();
-    info!(
+    debug!(
         "PublisherStakeCaps: Computed publisher stake caps with m : {} and z : {} in {} us",
         parameters.m,
         parameters.z,

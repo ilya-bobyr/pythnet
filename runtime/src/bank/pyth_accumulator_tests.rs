@@ -14,14 +14,11 @@ use {
     byteorder::{ByteOrder, LittleEndian, ReadBytesExt},
     itertools::Itertools,
     pyth_oracle::{
-        solana_program::account_info::AccountInfo, PriceAccount, PriceAccountFlags, PythAccount,
+        solana_program::{account_info::AccountInfo, message}, PriceAccount, PriceAccountFlags, PythAccount,
         PythOracleSerialize,
     },
     pythnet_sdk::{
-        accumulators::{merkle::MerkleAccumulator, Accumulator},
-        hashers::{keccak256_160::Keccak160, Hasher},
-        wormhole::{AccumulatorSequenceTracker, MessageData, PostedMessageUnreliableData},
-        ACCUMULATOR_EMITTER_ADDRESS,
+        accumulators::{merkle::MerkleAccumulator, Accumulator}, hashers::{keccak256_160::Keccak160, Hasher}, publisher_stake_caps::StakeCapParameters, wormhole::{AccumulatorSequenceTracker, MessageData, PostedMessageUnreliableData}, ACCUMULATOR_EMITTER_ADDRESS
     },
     solana_sdk::{
         account::{AccountSharedData, ReadableAccount, WritableAccount},
@@ -694,119 +691,76 @@ fn test_accumulator_v2_mixed() {
     test_accumulator_v2([true, true, false, false]);
 }
 
-fn test_accumulator_v2(generate_buffers: [bool; 4]) {
-    let leader_pubkey = solana_sdk::pubkey::new_rand();
-    let GenesisConfigInfo {
-        mut genesis_config, ..
-    } = create_genesis_config_with_leader(5, &leader_pubkey, 3);
+fn generate_price(bank : &Bank, seeds: &[u8], generate_buffers: bool, publishers : &[Pubkey]) -> (Pubkey, Vec<Vec<u8>>) {
+    let (price_feed_key, _bump) = Pubkey::find_program_address(&[seeds], &ORACLE_PID);
+    let mut price_feed_account =
+        AccountSharedData::new(42, size_of::<PriceAccount>(), &ORACLE_PID);
 
-    // Set epoch length to 32 so we can advance epochs quickly. We also skip past slot 0 here
-    // due to slot 0 having special handling.
-    let slots_in_epoch = 32;
-    genesis_config.epoch_schedule = EpochSchedule::new(slots_in_epoch);
-    let mut bank = create_new_bank_for_tests_with_index(&genesis_config);
+    let messages = {
+        let price_feed_info_key = &price_feed_key.to_bytes().into();
+        let price_feed_info_lamports = &mut 0;
+        let price_feed_info_owner = &ORACLE_PID.to_bytes().into();
+        let price_feed_info_data = price_feed_account.data_mut();
+        let price_feed_info = AccountInfo::new(
+            price_feed_info_key,
+            false,
+            true,
+            price_feed_info_lamports,
+            price_feed_info_data,
+            price_feed_info_owner,
+            false,
+            Epoch::default(),
+        );
 
-    let generate_price = |seeds, generate_buffers: bool| {
-        let (price_feed_key, _bump) = Pubkey::find_program_address(&[seeds], &ORACLE_PID);
-        let mut price_feed_account =
-            AccountSharedData::new(42, size_of::<PriceAccount>(), &ORACLE_PID);
-
-        let messages = {
-            let price_feed_info_key = &price_feed_key.to_bytes().into();
-            let price_feed_info_lamports = &mut 0;
-            let price_feed_info_owner = &ORACLE_PID.to_bytes().into();
-            let price_feed_info_data = price_feed_account.data_mut();
-            let price_feed_info = AccountInfo::new(
-                price_feed_info_key,
-                false,
-                true,
-                price_feed_info_lamports,
-                price_feed_info_data,
-                price_feed_info_owner,
-                false,
-                Epoch::default(),
+        let mut price_account = PriceAccount::initialize(&price_feed_info, 0).unwrap();
+        if !generate_buffers {
+            price_account.flags.insert(
+                PriceAccountFlags::ACCUMULATOR_V2 | PriceAccountFlags::MESSAGE_BUFFER_CLEARED,
             );
-
-            let mut price_account = PriceAccount::initialize(&price_feed_info, 0).unwrap();
-            if !generate_buffers {
-                price_account.flags.insert(
-                    PriceAccountFlags::ACCUMULATOR_V2 | PriceAccountFlags::MESSAGE_BUFFER_CLEARED,
-                );
-            }
-
-            vec![
-                price_account
-                    .as_price_feed_message(&price_feed_key.to_bytes().into())
-                    .to_bytes(),
-                price_account
-                    .as_twap_message(&price_feed_key.to_bytes().into())
-                    .to_bytes(),
-            ]
-        };
-
-        bank.store_account(&price_feed_key, &price_feed_account);
-
-        if generate_buffers {
-            let message_buffer_bytes = create_message_buffer_bytes(messages.clone());
-
-            let mut seed = vec![1; 32];
-            seed[..seeds.len()].copy_from_slice(seeds);
-            // Create a Message account.
-            let price_message_key = keypair_from_seed(&seed).unwrap();
-            let mut price_message_account = bank
-                .get_account(&price_message_key.pubkey())
-                .unwrap_or_default();
-
-            price_message_account.set_lamports(1_000_000_000);
-            price_message_account
-                .set_owner(Pubkey::new_from_array(pythnet_sdk::MESSAGE_BUFFER_PID));
-            price_message_account.set_data(message_buffer_bytes);
-
-            // Store Message account so the accumulator sysvar updater can find it.
-            bank.store_account(&price_message_key.pubkey(), &price_message_account);
+        }
+        price_account.num_ = publishers.len() as u32;
+        for (i, publisher) in publishers.into_iter().enumerate() {
+            price_account.comp_[i].pub_ = publisher.to_bytes().into();
         }
 
-        (price_feed_key, messages)
+        vec![
+            price_account
+                .as_price_feed_message(&price_feed_key.to_bytes().into())
+                .to_bytes(),
+            price_account
+                .as_twap_message(&price_feed_key.to_bytes().into())
+                .to_bytes(),
+        ]
     };
 
-    assert!(bank
-        .feature_set
-        .is_active(&feature_set::enable_accumulator_sysvar::id()));
-    assert!(bank
-        .feature_set
-        .is_active(&feature_set::move_accumulator_to_end_of_block::id()));
-    assert!(bank
-        .feature_set
-        .is_active(&feature_set::undo_move_accumulator_to_end_of_block::id()));
-    assert!(bank
-        .feature_set
-        .is_active(&feature_set::redo_move_accumulator_to_end_of_block::id()));
+    bank.store_account(&price_feed_key, &price_feed_account);
 
-    let prices_with_messages = [
-        generate_price(b"seeds_1", generate_buffers[0]),
-        generate_price(b"seeds_2", generate_buffers[1]),
-        generate_price(b"seeds_3", generate_buffers[2]),
-        generate_price(b"seeds_4", generate_buffers[3]),
-    ];
+    if generate_buffers {
+        let message_buffer_bytes = create_message_buffer_bytes(messages.clone());
 
-    bank = new_from_parent(&Arc::new(bank)); // Advance slot 1.
-    bank = new_from_parent(&Arc::new(bank)); // Advance slot 2.
+        let mut seed = vec![1; 32];
+        seed[..seeds.len()].copy_from_slice(seeds);
+        // Create a Message account.
+        let price_message_key = keypair_from_seed(&seed).unwrap();
+        let mut price_message_account = bank
+            .get_account(&price_message_key.pubkey())
+            .unwrap_or_default();
 
-    let messages = prices_with_messages
-        .iter()
-        .flat_map(|(_, messages)| messages)
-        .map(|message| &message[..])
-        .sorted_unstable()
-        .dedup()
-        .collect::<Vec<_>>();
-    assert_eq!(messages.len(), 8);
+        price_message_account.set_lamports(1_000_000_000);
+        price_message_account
+            .set_owner(Pubkey::new_from_array(pythnet_sdk::MESSAGE_BUFFER_PID));
+        price_message_account.set_data(message_buffer_bytes);
 
-    // Trigger Aggregation. We freeze instead of new_from_parent so
-    // we can keep access to the bank.
-    let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
-    bank.freeze();
+        // Store Message account so the accumulator sysvar updater can find it.
+        bank.store_account(&price_message_key.pubkey(), &price_message_account);
+        
+    }
 
-    // Get the wormhole message generated by freezed. We don't need
+    (price_feed_key, messages)
+}
+
+fn check_accumulator_state_matches_messages(bank: &Bank, sequence_tracker_before_bank_freeze: &AccumulatorSequenceTracker, messages: &[&[u8]]) {
+        // Get the wormhole message generated by freezed. We don't need
     // to offset the ring index as our test is always below 10K slots.
     let wormhole_message_account = get_wormhole_message_account(&bank, bank.slot() as u32);
     assert_ne!(wormhole_message_account.data().len(), 0);
@@ -883,6 +837,176 @@ fn test_accumulator_v2(generate_buffers: [bool; 4]) {
         sequence_tracker_before_bank_freeze.sequence + 1
     );
 }
+
+fn test_accumulator_v2(generate_buffers: [bool; 4]) {
+    let leader_pubkey = solana_sdk::pubkey::new_rand();
+    let GenesisConfigInfo {
+        mut genesis_config, ..
+    } = create_genesis_config_with_leader(5, &leader_pubkey, 3);
+
+    genesis_config
+    .accounts
+    .remove(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
+    .unwrap();
+
+    // Set epoch length to 32 so we can advance epochs quickly. We also skip past slot 0 here
+    // due to slot 0 having special handling.
+    let slots_in_epoch = 32;
+    genesis_config.epoch_schedule = EpochSchedule::new(slots_in_epoch);
+    let mut bank = create_new_bank_for_tests_with_index(&genesis_config);
+
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::enable_accumulator_sysvar::id()));
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::move_accumulator_to_end_of_block::id()));
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::undo_move_accumulator_to_end_of_block::id()));
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::redo_move_accumulator_to_end_of_block::id()));
+
+    let prices_with_messages = [
+        generate_price(&bank, b"seeds_1", generate_buffers[0], &[]),
+        generate_price(&bank, b"seeds_2", generate_buffers[1], &[]),
+        generate_price(&bank,b"seeds_3", generate_buffers[2], &[]),
+        generate_price(&bank,b"seeds_4", generate_buffers[3], &[])
+    ];
+
+    bank = new_from_parent(&Arc::new(bank)); // Advance slot 1.
+    bank = new_from_parent(&Arc::new(bank)); // Advance slot 2.
+
+    let messages = prices_with_messages
+        .iter()
+        .flat_map(|(_, messages)| messages)
+        .map(|message| &message[..])
+        .sorted_unstable()
+        .dedup()
+        .collect::<Vec<_>>();
+    assert_eq!(messages.len(), 8);
+
+    // Trigger Aggregation. We freeze instead of new_from_parent so
+    // we can keep access to the bank.
+    let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
+    bank.freeze();
+
+    check_accumulator_state_matches_messages(&bank, &sequence_tracker_before_bank_freeze, &messages);
+}
+
+#[test]
+fn test_publisher_stake_caps() {
+    let leader_pubkey = solana_sdk::pubkey::new_rand();
+    let GenesisConfigInfo {
+        mut genesis_config, ..
+    } = create_genesis_config_with_leader(5, &leader_pubkey, 3);
+
+    genesis_config
+    .accounts
+    .remove(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
+    .unwrap();
+
+    // Set epoch length to 32 so we can advance epochs quickly. We also skip past slot 0 here
+    // due to slot 0 having special handling.
+    let slots_in_epoch = 32;
+    genesis_config.epoch_schedule = EpochSchedule::new(slots_in_epoch);
+    let mut bank = create_new_bank_for_tests_with_index(&genesis_config);
+
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::enable_accumulator_sysvar::id()));
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::move_accumulator_to_end_of_block::id()));
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::undo_move_accumulator_to_end_of_block::id()));
+    assert!(bank
+        .feature_set
+        .is_active(&feature_set::redo_move_accumulator_to_end_of_block::id()));
+
+        let new_m = 1_000_000_000_000;
+        let new_z = 3;
+
+    let mut publishers_with_expected_caps : [(Pubkey, u64, u64) ; 4] = [
+        (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 5 / 4, new_m / 3 + new_m / 4),
+        (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 3 / 4, new_m / 3 + new_m / 4),
+        (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 3 / 4, new_m / 3 + new_m / 4),
+        (solana_sdk::pubkey::new_rand(),StakeCapParameters::default().m * 5 / 4, new_m / 3 + new_m / 4)
+    ];
+
+    let expected_caps = [[
+        StakeCapParameters::default().m * 5 / 4,
+        StakeCapParameters::default().m * 3 / 4,
+        StakeCapParameters::default().m * 2 / 4,
+        StakeCapParameters::default().m * 1 / 4,
+    ],[new_m / 3 + new_m / 4,new_m / 3 + new_m / 4,new_m / 3 + new_m / 4,new_m / 3 + new_m / 4 ]];
+
+    let prices_with_messages = [
+        generate_price(&bank, b"seeds_1", false, &[publishers_with_expected_caps[0].0]),
+        generate_price(&bank, b"seeds_2", false, &[publishers_with_expected_caps[1].0, publishers_with_expected_caps[2].0]),
+        generate_price(&bank,b"seeds_3", true, &[publishers_with_expected_caps[3].0]),
+        generate_price(&bank,b"seeds_4", true, &[publishers_with_expected_caps[3].0, publishers_with_expected_caps[1].0, publishers_with_expected_caps[0].0, publishers_with_expected_caps[2].0])
+    ];
+
+    publishers_with_expected_caps.sort_by_key(|(pk,_,_)| *pk);
+
+    bank = new_from_parent(&Arc::new(bank)); // Advance slot 1.
+    bank = new_from_parent(&Arc::new(bank)); // Advance slot 2.
+
+
+    let mut messages = prices_with_messages
+        .iter()
+        .flat_map(|(_, messages)| messages)
+        .map(|message| &message[..])
+        .sorted_unstable()
+        .dedup()
+        .collect::<Vec<_>>();
+    assert_eq!(messages.len(), 8);
+
+    let feature_id = feature_set::add_publisher_stake_caps_to_the_accumulator::id();
+    let feature = Feature {
+        activated_at: Some(30),
+    };
+    bank.store_account(&feature_id, &feature::create_account(&feature, 42));
+
+    bank.compute_active_feature_set(true);
+
+    // Trigger Aggregation. We freeze instead of new_from_parent so
+    // we can keep access to the bank.
+    let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
+    bank.freeze();
+
+    check_accumulator_state_matches_messages(&bank, &sequence_tracker_before_bank_freeze, &messages);
+
+    // Enable Publisher Stake Caps
+
+    for _ in 0..slots_in_epoch {
+        bank = new_from_parent(&Arc::new(bank));
+    }
+
+    let publisher_caps_message = {
+        let mut result = vec![];
+        result.extend_from_slice(&bank.unix_timestamp_from_genesis().to_be_bytes());
+        result.extend_from_slice(&4u16.to_be_bytes());
+        for (pk, m, _) in publishers_with_expected_caps {
+            result.extend_from_slice(&pk.to_bytes());
+            result.extend_from_slice(&m.to_be_bytes());        }
+        result
+    };
+
+
+    messages.push(&publisher_caps_message);
+
+    let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
+    bank.freeze();
+    check_accumulator_state_matches_messages(&bank, &sequence_tracker_before_bank_freeze, &messages);
+
+
+}
+
+
 #[test]
 fn test_get_accumulator_keys() {
     use pythnet_sdk::{pythnet, ACCUMULATOR_EMITTER_ADDRESS, MESSAGE_BUFFER_PID};

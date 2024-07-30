@@ -3177,9 +3177,11 @@ fn process_account_indexes(matches: &ArgMatches) -> AccountSecondaryIndexes {
         })
         .collect();
 
-    assert!(account_indexes.contains(&AccountIndex::ProgramId),
+    assert!(
+        account_indexes.contains(&AccountIndex::ProgramId),
         "The indexing should be enabled for program-id accounts. Add the following flag:\n\
-        --account-index program-id\n");
+        --account-index program-id\n"
+    );
 
     let account_indexes_include_keys: HashSet<Pubkey> =
         values_t!(matches, "account_index_include_key", Pubkey)
@@ -3199,7 +3201,9 @@ fn process_account_indexes(matches: &ArgMatches) -> AccountSecondaryIndexes {
     let include_keys = !account_indexes_include_keys.is_empty();
 
     if include_keys {
-        if !account_indexes_include_keys.contains(&*ORACLE_PID) || !account_indexes_include_keys.contains(&*MESSAGE_BUFFER_PID) {
+        if !account_indexes_include_keys.contains(&*ORACLE_PID)
+            || !account_indexes_include_keys.contains(&*MESSAGE_BUFFER_PID)
+        {
             panic!(
                 "The oracle program id and message buffer program id must be included in the account index. Add the following flags\n\
                 --account-index-include-key {}\n\
@@ -3210,7 +3214,9 @@ fn process_account_indexes(matches: &ArgMatches) -> AccountSecondaryIndexes {
     }
 
     if exclude_keys {
-        if account_indexes_exclude_keys.contains(&*ORACLE_PID) || account_indexes_exclude_keys.contains(&*MESSAGE_BUFFER_PID) {
+        if account_indexes_exclude_keys.contains(&*ORACLE_PID)
+            || account_indexes_exclude_keys.contains(&*MESSAGE_BUFFER_PID)
+        {
             panic!("The oracle program id and message buffer program id must *not* be excluded from the account index.");
         }
     }

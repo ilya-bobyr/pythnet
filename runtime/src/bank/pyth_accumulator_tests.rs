@@ -16,8 +16,8 @@ use {
     byteorder::{ByteOrder, LittleEndian, ReadBytesExt},
     itertools::Itertools,
     pyth_oracle::{
-        solana_program::{account_info::AccountInfo},
-        PriceAccount, PriceAccountFlags, PythAccount, PythOracleSerialize,
+        solana_program::account_info::AccountInfo, PriceAccount, PriceAccountFlags, PythAccount,
+        PythOracleSerialize,
     },
     pythnet_sdk::{
         accumulators::{merkle::MerkleAccumulator, Accumulator},
@@ -133,6 +133,10 @@ fn test_update_accumulator_sysvar() {
     genesis_config
         .accounts
         .remove(&feature_set::move_accumulator_to_end_of_block::id())
+        .unwrap();
+    genesis_config
+        .accounts
+        .remove(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
         .unwrap();
 
     // Set epoch length to 32 so we can advance epochs quickly. We also skip past slot 0 here
@@ -412,6 +416,10 @@ fn test_update_accumulator_end_of_block() {
     genesis_config
         .accounts
         .remove(&feature_set::move_accumulator_to_end_of_block::id())
+        .unwrap();
+    genesis_config
+        .accounts
+        .remove(&feature_set::add_publisher_stake_caps_to_the_accumulator::id())
         .unwrap();
 
     // Set epoch length to 32 so we can advance epochs quickly. We also skip past slot 0 here
@@ -1111,6 +1119,7 @@ fn test_get_accumulator_keys() {
         Pubkey::new_from_array(pythnet::ACCUMULATOR_SEQUENCE_ADDR),
         Pubkey::new_from_array(pythnet::WORMHOLE_PID),
         *ORACLE_PID,
+        *STAKE_CAPS_PARAMETERS_ADDR,
     ];
     assert_eq!(accumulator_keys, expected_pyth_keys);
 }

@@ -419,7 +419,6 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
         measure.as_us()
     );
 
-
     let mut any_v1_aggregations = false;
     let mut v2_messages = Vec::new();
 
@@ -488,7 +487,9 @@ pub fn compute_publisher_stake_caps(
     measure.stop();
     info!(
         "PublisherStakeCaps: Computed publisher stake caps with m : {} and z : {} in {} us",
-        parameters.m, parameters.z, measure.as_us()
+        parameters.m,
+        parameters.z,
+        measure.as_us()
     );
 
     if bank

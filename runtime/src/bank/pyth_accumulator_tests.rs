@@ -1004,6 +1004,9 @@ fn test_publisher_stake_caps() {
                 publishers_with_expected_caps[2].0,
             ],
         ),
+        generate_price(&bank, b"seeds_5", false, &[]),
+
+
     ];
 
     // Publishers are sorted in the publisher stake caps message so we sort them here too
@@ -1019,7 +1022,7 @@ fn test_publisher_stake_caps() {
         .sorted_unstable()
         .dedup()
         .collect::<Vec<_>>();
-    assert_eq!(messages.len(), 8);
+    assert_eq!(messages.len(), 10);
 
     // We turn on the feature to add publisher stake caps to the accumulator but it won't be active until next epoch
     activate_feature(
@@ -1054,7 +1057,7 @@ fn test_publisher_stake_caps() {
 
     // Now the messages contain the publisher caps message
     messages.push(&publisher_caps_message);
-    assert_eq!(messages.len(), 9);
+    assert_eq!(messages.len(), 11);
 
     let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
     bank.freeze();
@@ -1064,6 +1067,24 @@ fn test_publisher_stake_caps() {
         &messages,
     );
 
+    bank = new_from_parent(&Arc::new(bank));
+
+    // We add some badly formatted stake cap parameters
+    let mut stake_cap_parameters_account =
+        AccountSharedData::new(42, size_of::<StakeCapParameters>(), &ORACLE_PID);
+    stake_cap_parameters_account.set_data(
+        vec![1,2,3,4],
+    );
+    bank.store_account(&STAKE_CAPS_PARAMETERS_ADDR, &stake_cap_parameters_account);
+
+    // Nothing should change as the stake cap parameters are invalid
+    let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
+    bank.freeze();
+    check_accumulator_state_matches_messages(
+        &bank,
+        &sequence_tracker_before_bank_freeze,
+        &messages,
+    );
     bank = new_from_parent(&Arc::new(bank));
 
     // Now we update the stake cap parameters
@@ -1095,7 +1116,7 @@ fn test_publisher_stake_caps() {
     // Update the publisher caps message in the message arrays to match the new parameters
     let last_element_index = messages.len() - 1;
     messages[last_element_index] = &publisher_caps_message_with_new_parameters;
-    assert_eq!(messages.len(), 9);
+    assert_eq!(messages.len(), 11);
 
     let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
     bank.freeze();

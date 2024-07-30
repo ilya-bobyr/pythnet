@@ -6,7 +6,7 @@ use {
             AccountIndex, AccountSecondaryIndexes, AccountSecondaryIndexesIncludeExclude,
         },
         bank::{
-            pyth_accumulator::{get_accumulator_keys, ACCUMULATOR_RING_SIZE, ORACLE_PID},
+            pyth_accumulator::{get_accumulator_keys, ACCUMULATOR_RING_SIZE, ORACLE_PID, STAKE_CAPS_PARAMETERS_ADDR},
             Bank,
         },
         genesis_utils::{create_genesis_config_with_leader, GenesisConfigInfo},
@@ -987,8 +987,8 @@ fn test_publisher_stake_caps() {
     }
 
     let publisher_caps_message = {
-        let mut result = vec![];
-        result.extend_from_slice(&bank.unix_timestamp_from_genesis().to_be_bytes());
+        let mut result = vec![2];
+        result.extend_from_slice(&bank.clock().unix_timestamp.to_be_bytes());
         result.extend_from_slice(&4u16.to_be_bytes());
         for (pk, m, _) in publishers_with_expected_caps {
             result.extend_from_slice(&pk.to_bytes());
@@ -1002,8 +1002,29 @@ fn test_publisher_stake_caps() {
     let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
     bank.freeze();
     check_accumulator_state_matches_messages(&bank, &sequence_tracker_before_bank_freeze, &messages);
+    bank = new_from_parent(&Arc::new(bank));
 
+    // Now store the stake cap parameters
+    let mut stake_cap_parameters_account = AccountSharedData::new(42, size_of::<StakeCapParameters>(), &ORACLE_PID);
+    stake_cap_parameters_account.set_data(StakeCapParameters{ _discriminator: 0, _current_authority: [0u8;32], m: new_m, z: new_z }.try_to_vec().unwrap());
+    bank.store_account(&STAKE_CAPS_PARAMETERS_ADDR, &stake_cap_parameters_account);
 
+    let publisher_caps_message_with_new_parameters = {
+        let mut result = vec![2];
+        result.extend_from_slice(&bank.clock().unix_timestamp.to_be_bytes());
+        result.extend_from_slice(&4u16.to_be_bytes());
+        for (pk, _, m) in publishers_with_expected_caps {
+            result.extend_from_slice(&pk.to_bytes());
+            result.extend_from_slice(&m.to_be_bytes());        }
+        result
+    };
+
+    let last_element_index = messages.len() - 1;
+    messages[last_element_index] = &publisher_caps_message_with_new_parameters;
+
+    let sequence_tracker_before_bank_freeze = get_acc_sequence_tracker(&bank);
+    bank.freeze();
+    check_accumulator_state_matches_messages(&bank, &sequence_tracker_before_bank_freeze, &messages);
 }
 
 

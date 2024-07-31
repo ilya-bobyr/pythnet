@@ -3600,8 +3600,8 @@ dependencies = [
 
 [[package]]
 name = "pyth-oracle"
-version = "2.32.0"
-source = "git+https://github.com/pyth-network/pyth-client.git?branch=feat/publisher-caps#f6de9ed368a7aa0740298740c8585cf82273c9fc"
+version = "2.33.0"
+source = "git+https://github.com/pyth-network/pyth-client?tag=oracle-v2.33.0#5ee8b5f63f8b1d72f84c1177adaf564d7d61d092"
 dependencies = [
  "bindgen 0.60.1",
  "bitflags 2.6.0",
@@ -3609,7 +3609,7 @@ dependencies = [
  "byteorder",
  "num-derive",
  "num-traits",
- "pythnet-sdk 2.1.0",
+ "pythnet-sdk 2.2.0",
  "solana-program 1.14.17",
  "solana-sdk 1.14.17",
  "thiserror",
@@ -3635,8 +3635,9 @@ dependencies = [
 
 [[package]]
 name = "pythnet-sdk"
-version = "2.1.0"
-source = "git+https://github.com/pyth-network/pyth-crosschain?branch=feat/publisher-caps#a9e93d96418101b3caa8e7ffaaef21d344184eb9"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4f81d23a693463366640d1ba14c612841b5b07adc56ee20bbf9acaca2ad86b5"
 dependencies = [
  "bincode",
  "borsh 0.10.3",

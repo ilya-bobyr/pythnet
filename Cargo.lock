@@ -508,7 +508,17 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15bf3650200d8bffa99015595e10f1fbd17de07abbc25bb067da79e769939bfa"
 dependencies = [
- "borsh-derive",
+ "borsh-derive 0.9.3",
+ "hashbrown 0.11.2",
+]
+
+[[package]]
+name = "borsh"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4114279215a005bc675e386011e594e1d9b800918cea18fcadadcce864a2046b"
+dependencies = [
+ "borsh-derive 0.10.3",
  "hashbrown 0.11.2",
 ]
 
@@ -518,8 +528,21 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6441c552f230375d18e3cc377677914d2ca2b0d36e52129fe15450a2dce46775"
 dependencies = [
- "borsh-derive-internal",
- "borsh-schema-derive-internal",
+ "borsh-derive-internal 0.9.3",
+ "borsh-schema-derive-internal 0.9.3",
+ "proc-macro-crate 0.1.5",
+ "proc-macro2 1.0.86",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0754613691538d51f329cce9af41d7b7ca150bc973056f1156611489475f54f7"
+dependencies = [
+ "borsh-derive-internal 0.10.3",
+ "borsh-schema-derive-internal 0.10.3",
  "proc-macro-crate 0.1.5",
  "proc-macro2 1.0.86",
  "syn 1.0.109",
@@ -537,10 +560,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "borsh-derive-internal"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afb438156919598d2c7bad7e1c0adf3d26ed3840dbc010db1a882a65583ca2fb"
+dependencies = [
+ "proc-macro2 1.0.86",
+ "quote 1.0.36",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "borsh-schema-derive-internal"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdbd5696d8bfa21d53d9fe39a714a18538bad11492a42d066dbbc395fb1951c0"
+dependencies = [
+ "proc-macro2 1.0.86",
+ "quote 1.0.36",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "borsh-schema-derive-internal"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "634205cc43f74a1b9046ef87c4540ebda95696ec0f315024860cad7c5b0f5ccd"
 dependencies = [
  "proc-macro2 1.0.86",
  "quote 1.0.36",
@@ -3555,8 +3600,8 @@ dependencies = [
 
 [[package]]
 name = "pyth-oracle"
-version = "2.32.1"
-source = "git+https://github.com/pyth-network/pyth-client?tag=oracle-v2.32.1#94babc4096eb7ff804f5087fb9600ee110b9591d"
+version = "2.33.0"
+source = "git+https://github.com/pyth-network/pyth-client?tag=oracle-v2.33.0#5ee8b5f63f8b1d72f84c1177adaf564d7d61d092"
 dependencies = [
  "bindgen 0.60.1",
  "bitflags 2.6.0",
@@ -3564,7 +3609,7 @@ dependencies = [
  "byteorder",
  "num-derive",
  "num-traits",
- "pythnet-sdk 1.13.6 (git+https://github.com/pyth-network/pyth-crosschain?rev=60144002053a93f424be70decd8a8ccb8d618d81)",
+ "pythnet-sdk 2.2.0",
  "solana-program 1.14.17",
  "solana-sdk 1.14.17",
  "thiserror",
@@ -3573,28 +3618,10 @@ dependencies = [
 [[package]]
 name = "pythnet-sdk"
 version = "1.13.6"
-source = "git+https://github.com/pyth-network/pyth-crosschain?rev=60144002053a93f424be70decd8a8ccb8d618d81#60144002053a93f424be70decd8a8ccb8d618d81"
+source = "git+https://github.com/pyth-network/pyth-crosschain?rev=33f901aa45f4f0005aa5a84a1479b78ca9033074#33f901aa45f4f0005aa5a84a1479b78ca9033074"
 dependencies = [
  "bincode",
- "borsh",
- "bytemuck",
- "byteorder",
- "fast-math",
- "hex",
- "rustc_version 0.4.0",
- "serde",
- "sha3 0.10.8",
- "slow_primes",
- "thiserror",
-]
-
-[[package]]
-name = "pythnet-sdk"
-version = "1.13.6"
-source = "git+https://github.com/pyth-network/pyth-crosschain?rev=e670f57f89b05398ca352e4accb1e32724a8e1b4#e670f57f89b05398ca352e4accb1e32724a8e1b4"
-dependencies = [
- "bincode",
- "borsh",
+ "borsh 0.9.3",
  "bytemuck",
  "fast-math",
  "hex",
@@ -3604,6 +3631,25 @@ dependencies = [
  "sha3 0.10.8",
  "slow_primes",
  "wormhole-sdk",
+]
+
+[[package]]
+name = "pythnet-sdk"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4f81d23a693463366640d1ba14c612841b5b07adc56ee20bbf9acaca2ad86b5"
+dependencies = [
+ "bincode",
+ "borsh 0.10.3",
+ "bytemuck",
+ "byteorder",
+ "fast-math",
+ "hex",
+ "rustc_version 0.4.0",
+ "serde",
+ "sha3 0.10.8",
+ "slow_primes",
+ "thiserror",
 ]
 
 [[package]]
@@ -4733,7 +4779,7 @@ dependencies = [
 name = "solana-banks-client"
 version = "1.14.177"
 dependencies = [
- "borsh",
+ "borsh 0.9.3",
  "futures 0.3.21",
  "solana-banks-interface",
  "solana-banks-server",
@@ -5877,8 +5923,8 @@ dependencies = [
  "bincode",
  "bitflags 1.3.2",
  "blake3",
- "borsh",
- "borsh-derive",
+ "borsh 0.9.3",
+ "borsh-derive 0.9.3",
  "bs58",
  "bv",
  "bytemuck",
@@ -5926,8 +5972,8 @@ dependencies = [
  "bincode",
  "bitflags 1.3.2",
  "blake3",
- "borsh",
- "borsh-derive",
+ "borsh 0.9.3",
+ "borsh-derive 0.9.3",
  "bs58",
  "bv",
  "bytemuck",
@@ -6154,7 +6200,7 @@ dependencies = [
  "once_cell",
  "ouroboros",
  "pyth-oracle",
- "pythnet-sdk 1.13.6 (git+https://github.com/pyth-network/pyth-crosschain?rev=e670f57f89b05398ca352e4accb1e32724a8e1b4)",
+ "pythnet-sdk 1.13.6",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rayon",
@@ -6199,7 +6245,7 @@ dependencies = [
  "base64 0.13.0",
  "bincode",
  "bitflags 1.3.2",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "bytemuck",
  "byteorder",
@@ -6249,7 +6295,7 @@ dependencies = [
  "base64 0.13.0",
  "bincode",
  "bitflags 1.3.2",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "bytemuck",
  "byteorder",
@@ -6561,7 +6607,7 @@ dependencies = [
  "Inflector",
  "base64 0.13.0",
  "bincode",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "lazy_static",
  "log",
@@ -6815,7 +6861,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbc000f0fdf1f12f99d77d398137c1751345b18c88258ce0f99b7872cf6c9bd6"
 dependencies = [
  "assert_matches",
- "borsh",
+ "borsh 0.9.3",
  "num-derive",
  "num-traits",
  "solana-program 1.14.17",

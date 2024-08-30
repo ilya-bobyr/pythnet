@@ -1,13 +1,13 @@
 use {
-    super::pyth_accumulator::MESSAGE_BUFFER_PID,
     crate::{
-        accounts_db::AccountShrinkThreshold,
-        accounts_index::{
-            AccountIndex, AccountSecondaryIndexes, AccountSecondaryIndexesIncludeExclude,
-        },
         bank::{
-            pyth_accumulator::{
-                get_accumulator_keys, ACCUMULATOR_RING_SIZE, ORACLE_PID, STAKE_CAPS_PARAMETERS_ADDR,
+            pyth::{
+                accumulator::{
+                    ACCUMULATOR_RING_SIZE, BATCH_PUBLISH_PID, ORACLE_PID,
+                    STAKE_CAPS_PARAMETERS_ADDR,
+                },
+                get_pyth_keys,
+                tests::{create_new_bank_for_tests_with_index, new_from_parent},
             },
             Bank,
         },
@@ -33,7 +33,6 @@ use {
         epoch_schedule::EpochSchedule,
         feature::{self, Feature},
         feature_set,
-        genesis_config::GenesisConfig,
         hash::hashv,
         pubkey::Pubkey,
         signature::keypair_from_seed,
@@ -41,21 +40,6 @@ use {
     },
     std::{io::Read, mem::size_of, sync::Arc},
 };
-
-fn create_new_bank_for_tests_with_index(genesis_config: &GenesisConfig) -> Bank {
-    Bank::new_with_config_for_tests(
-        genesis_config,
-        AccountSecondaryIndexes {
-            keys: Some(AccountSecondaryIndexesIncludeExclude {
-                exclude: false,
-                keys: [*ORACLE_PID, *MESSAGE_BUFFER_PID].into_iter().collect(),
-            }),
-            indexes: [AccountIndex::ProgramId].into_iter().collect(),
-        },
-        false,
-        AccountShrinkThreshold::default(),
-    )
-}
 
 // Create Message Account Bytes
 //
@@ -393,10 +377,6 @@ fn test_update_accumulator_sysvar() {
     //      done in this test but can be moved to a separate test.
     // 2. Intentionally add corrupted accounts that do not appear in the accumulator.
     // 3. Check if message offset is > message size to prevent validator crash.
-}
-
-fn new_from_parent(parent: &Arc<Bank>) -> Bank {
-    Bank::new_from_parent(parent, &Pubkey::default(), parent.slot() + 1)
 }
 
 #[test]
@@ -1005,8 +985,6 @@ fn test_publisher_stake_caps() {
             ],
         ),
         generate_price(&bank, b"seeds_5", false, &[]),
-
-
     ];
 
     // Publishers are sorted in the publisher stake caps message so we sort them here too
@@ -1072,9 +1050,7 @@ fn test_publisher_stake_caps() {
     // We add some badly formatted stake cap parameters
     let mut stake_cap_parameters_account =
         AccountSharedData::new(42, size_of::<StakeCapParameters>(), &ORACLE_PID);
-    stake_cap_parameters_account.set_data(
-        vec![1,2,3,4],
-    );
+    stake_cap_parameters_account.set_data(vec![1, 2, 3, 4]);
     bank.store_account(&STAKE_CAPS_PARAMETERS_ADDR, &stake_cap_parameters_account);
 
     // Nothing should change as the stake cap parameters are invalid
@@ -1130,10 +1106,7 @@ fn test_publisher_stake_caps() {
 #[test]
 fn test_get_accumulator_keys() {
     use pythnet_sdk::{pythnet, ACCUMULATOR_EMITTER_ADDRESS, MESSAGE_BUFFER_PID};
-    let accumulator_keys: Vec<Pubkey> = get_accumulator_keys()
-        .iter()
-        .map(|(_, pk_res)| *pk_res.as_ref().unwrap())
-        .collect();
+    let accumulator_keys: Vec<Pubkey> = get_pyth_keys().iter().map(|(_, pk)| *pk).collect();
     let expected_pyth_keys = vec![
         Pubkey::new_from_array(MESSAGE_BUFFER_PID),
         Pubkey::new_from_array(ACCUMULATOR_EMITTER_ADDRESS),
@@ -1141,6 +1114,7 @@ fn test_get_accumulator_keys() {
         Pubkey::new_from_array(pythnet::WORMHOLE_PID),
         *ORACLE_PID,
         *STAKE_CAPS_PARAMETERS_ADDR,
+        *BATCH_PUBLISH_PID,
     ];
     assert_eq!(accumulator_keys, expected_pyth_keys);
 }

@@ -52,7 +52,7 @@ use {
             AccountIndex, AccountSecondaryIndexes, AccountSecondaryIndexesIncludeExclude,
             AccountsIndexConfig, IndexLimitMb,
         },
-        bank::pyth_accumulator::{MESSAGE_BUFFER_PID, ORACLE_PID},
+        bank::pyth::accumulator::{BATCH_PUBLISH_PID, MESSAGE_BUFFER_PID, ORACLE_PID},
         hardened_unpack::MAX_GENESIS_ARCHIVE_UNPACKED_SIZE,
         runtime_config::RuntimeConfig,
         snapshot_config::SnapshotConfig,
@@ -3200,24 +3200,28 @@ fn process_account_indexes(matches: &ArgMatches) -> AccountSecondaryIndexes {
     let exclude_keys = !account_indexes_exclude_keys.is_empty();
     let include_keys = !account_indexes_include_keys.is_empty();
 
-    if include_keys {
-        if !account_indexes_include_keys.contains(&*ORACLE_PID)
+    if include_keys
+        && (!account_indexes_include_keys.contains(&*ORACLE_PID)
             || !account_indexes_include_keys.contains(&*MESSAGE_BUFFER_PID)
-        {
-            panic!(
+            || !account_indexes_include_keys.contains(&*BATCH_PUBLISH_PID))
+    {
+        panic!(
                 "The oracle program id and message buffer program id must be included in the account index. Add the following flags\n\
                 --account-index-include-key {}\n\
+                --account-index-include-key {}\n\
                 --account-index-include-key {}\n",
-                &*ORACLE_PID, &*MESSAGE_BUFFER_PID
+                &*ORACLE_PID, &*MESSAGE_BUFFER_PID, &*BATCH_PUBLISH_PID,
             );
-        }
     }
 
     if exclude_keys {
-        if account_indexes_exclude_keys.contains(&*ORACLE_PID)
-            || account_indexes_exclude_keys.contains(&*MESSAGE_BUFFER_PID)
-        {
-            panic!("The oracle program id and message buffer program id must *not* be excluded from the account index.");
+        for key in &[&*ORACLE_PID, &*MESSAGE_BUFFER_PID, &*BATCH_PUBLISH_PID] {
+            if account_indexes_exclude_keys.contains(key) {
+                panic!(
+                    "This key must *not* be excluded from the account index: {}",
+                    key
+                );
+            }
         }
     }
 

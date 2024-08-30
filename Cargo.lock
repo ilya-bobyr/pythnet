@@ -519,7 +519,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4114279215a005bc675e386011e594e1d9b800918cea18fcadadcce864a2046b"
 dependencies = [
  "borsh-derive 0.10.3",
- "hashbrown 0.11.2",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -3601,7 +3601,7 @@ dependencies = [
 [[package]]
 name = "pyth-oracle"
 version = "2.33.0"
-source = "git+https://github.com/pyth-network/pyth-client?tag=oracle-v2.33.0#5ee8b5f63f8b1d72f84c1177adaf564d7d61d092"
+source = "git+https://github.com/pyth-network/pyth-client?rev=256b57#256b575a13e29bec93ba592c8f86cc5fad521915"
 dependencies = [
  "bindgen 0.60.1",
  "bitflags 2.6.0",
@@ -3612,6 +3612,16 @@ dependencies = [
  "pythnet-sdk 2.2.0",
  "solana-program 1.14.17",
  "solana-sdk 1.14.17",
+ "thiserror",
+]
+
+[[package]]
+name = "pyth-price-publisher"
+version = "0.1.0"
+source = "git+https://github.com/pyth-network/pyth-crosschain?branch=add-publisher-program#1fa5089f0f5abf1fe1d48ba0dda489843fcd545a"
+dependencies = [
+ "bytemuck",
+ "solana-program 1.14.17",
  "thiserror",
 ]
 
@@ -6200,6 +6210,7 @@ dependencies = [
  "once_cell",
  "ouroboros",
  "pyth-oracle",
+ "pyth-price-publisher",
  "pythnet-sdk 1.13.6",
  "rand 0.7.3",
  "rand_chacha 0.2.2",

@@ -104,7 +104,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 # sync.
 [patch."https://github.com/pyth-network/pyth-client".pyth-oracle]
 git = "https://github.com/ilya-bobyr/pyth-client"
-branch = "pythnet-update-oracle-v2.33.1"
+branch = "pythnet-update-oracle-v2.33.2"
 
 [patch.crates-io]
 # See root level `Cargo.toml` for an explanation of this patch.  Keep them in

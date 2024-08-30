@@ -1,8 +1,12 @@
 use {
-    super::Bank,
-    crate::accounts_index::{IndexKey, ScanConfig, ScanError},
+    super::batch_publish,
+    crate::{
+        accounts_index::{IndexKey, ScanConfig, ScanError},
+        bank::Bank,
+    },
     borsh::BorshSerialize,
     byteorder::{LittleEndian, ReadBytesExt},
+    itertools::Itertools,
     log::*,
     pyth_oracle::validator::AggregationError,
     pythnet_sdk::{
@@ -19,7 +23,10 @@ use {
         hash::hashv,
         pubkey::Pubkey,
     },
-    std::env::{self, VarError},
+    std::{
+        collections::HashMap,
+        env::{self, VarError},
+    },
 };
 
 pub const ACCUMULATOR_RING_SIZE: u32 = 10_000;
@@ -50,6 +57,12 @@ lazy_static! {
     pub static ref STAKE_CAPS_PARAMETERS_ADDR: Pubkey = env_pubkey_or(
         "STAKE_CAPS_PARAMETERS_ADDR",
         "879ZVNagiWaAKsWDjGVf8pLq1wUBeBz7sREjUh3hrU36"
+            .parse()
+            .unwrap(),
+    );
+    pub static ref PRICE_STORE_PID: Pubkey = env_pubkey_or(
+        "PRICE_STORE_PID",
+        "3m6sv6HGqEbuyLV84mD7rJn4MAC9LhUa1y1AUNVqcPfr"
             .parse()
             .unwrap(),
     );
@@ -116,25 +129,6 @@ fn env_pubkey_or(var: &str, default: Pubkey) -> Pubkey {
             panic!("invalid value of env var {}={:?}: not unicode", var, value);
         }
     }
-}
-
-/// Get all accumulator related pubkeys from environment variables
-/// or return default if the variable is not set.
-pub fn get_accumulator_keys() -> Vec<(
-    &'static str,
-    std::result::Result<Pubkey, AccumulatorUpdateErrorV1>,
-)> {
-    vec![
-        ("MESSAGE_BUFFER_PID", Ok(*MESSAGE_BUFFER_PID)),
-        ("ACCUMULATOR_EMITTER_ADDR", Ok(*ACCUMULATOR_EMITTER_ADDR)),
-        ("ACCUMULATOR_SEQUENCE_ADDR", Ok(*ACCUMULATOR_SEQUENCE_ADDR)),
-        ("WORMHOLE_PID", Ok(*WORMHOLE_PID)),
-        ("ORACLE_PID", Ok(*ORACLE_PID)),
-        (
-            "STAKE_CAPS_PARAMETERS_ADDR",
-            Ok(*STAKE_CAPS_PARAMETERS_ADDR),
-        ),
-    ]
 }
 
 pub fn update_v1(
@@ -424,21 +418,37 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
         v2_messages.push(publisher_stake_caps_message);
     }
 
-    let mut measure = Measure::start("update_v2_aggregate_price");
+    let mut measure = Measure::start("extract_batch_publish_prices");
+    let mut new_prices = batch_publish::extract_batch_publish_prices(bank).unwrap_or_else(|err| {
+        warn!("extract_batch_publish_prices failed: {}", err);
+        HashMap::new()
+    });
+    measure.stop();
+    debug!("batch publish: loaded prices in {}us", measure.as_us());
 
+    let mut measure = Measure::start("update_v2_aggregate_price");
     for (pubkey, mut account) in accounts {
         let mut price_account_data = account.data().to_owned();
+        let price_account =
+            match pyth_oracle::validator::checked_load_price_account_mut(&mut price_account_data) {
+                Ok(data) => data,
+                Err(_err) => {
+                    continue;
+                }
+            };
+
+        let mut need_save =
+            batch_publish::apply_published_prices(price_account, &mut new_prices, bank.slot());
 
         // Perform Accumulation
         match pyth_oracle::validator::aggregate_price(
             bank.slot(),
             bank.clock().unix_timestamp,
             &pubkey.to_bytes().into(),
-            &mut price_account_data,
+            price_account,
         ) {
             Ok(messages) => {
-                account.set_data(price_account_data);
-                bank.store_account_and_update_capitalization(&pubkey, &account);
+                need_save = true;
                 v2_messages.extend(messages);
             }
             Err(err) => match err {
@@ -448,6 +458,16 @@ pub fn update_v2(bank: &Bank) -> std::result::Result<(), AccumulatorUpdateErrorV
                 }
             },
         }
+        if need_save {
+            account.set_data(price_account_data);
+            bank.store_account_and_update_capitalization(&pubkey, &account);
+        }
+    }
+    if !new_prices.is_empty() {
+        warn!(
+            "pyth batch publish: missing price feed accounts for indexes: {}",
+            new_prices.keys().join(", ")
+        );
     }
 
     measure.stop();

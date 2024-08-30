@@ -76,7 +76,7 @@ use {
         accounts_db::{AccountShrinkThreshold, AccountsDbConfig},
         accounts_index::AccountSecondaryIndexes,
         accounts_update_notifier_interface::AccountsUpdateNotifier,
-        bank::{pyth_accumulator, Bank},
+        bank::{pyth, Bank},
         bank_forks::BankForks,
         commitment::BlockCommitmentCache,
         cost_model::CostModel,
@@ -1535,14 +1535,8 @@ fn load_blockstore(
         }
     }
 
-    for (key_name, pk_res) in pyth_accumulator::get_accumulator_keys() {
-        match pk_res {
-            Ok(pk) => info!("Accumulator {}: {}", key_name, pk),
-            Err(err) => {
-                error!("Failed to get Accumulator {}: {:?}", key_name, err);
-                std::process::abort();
-            }
-        }
+    for (key_name, pk) in pyth::get_pyth_keys() {
+        info!("Pyth key {}: {}", key_name, pk);
     }
 
     leader_schedule_cache.set_fixed_leader_schedule(config.fixed_leader_schedule.clone());

@@ -97,14 +97,21 @@ exclude = [
 # This prevents a Travis CI error when building for Windows.
 resolver = "2"
 
-# At the moment, there is no `oracle-v2.33.1` release in the
-# `pyth-network/pyth-client` repository.  This is an unreleased version that is
-# almost identical to `oracle-v2.33.0`, except that it removes strict version
-# constraints from the Solana dependencies.
+# At the moment, there is no `oracle-v2.33.1` or `oracle-v2.33.2` releases in
+# the `pyth-network/pyth-client` repository.
 #
+# `pythnet-update-oracle-v2.33.1` removes strict version constraints from the
+#      Solana dependencies.
+#
+# `pythnet-update-oracle-v2.33.2` cheery picks
+#     `256b575a13e29bec93ba592c8f86cc5fad521915` "Add feed index for batch
+#     publish (#416)" on top.
+#
+# There is a similar override in `programs/bpf/Cargo.toml`.  Please keep both in
+# sync.
 [patch."https://github.com/pyth-network/pyth-client".pyth-oracle]
 git = "https://github.com/ilya-bobyr/pyth-client"
-branch = "pythnet-update-oracle-v2.33.1"
+branch = "pythnet-update-oracle-v2.33.2"
 
 [patch.crates-io]
 serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", tag = "v2.17.1" }

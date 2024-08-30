@@ -3395,7 +3395,7 @@ dependencies = [
 [[package]]
 name = "pyth-oracle"
 version = "2.33.1"
-source = "git+https://github.com/ilya-bobyr/pyth-client?branch=pythnet-update-oracle-v2.33.1#ee56b1f5b62b5114ebf22e5e00cad30e70eb8320"
+source = "git+https://github.com/ilya-bobyr/pyth-client?branch=pythnet-update-oracle-v2.33.2#683c9099048595b22436d82f01f54323e94c7569"
 dependencies = [
  "bindgen 0.60.1",
  "bitflags 2.6.0",
@@ -3406,6 +3406,16 @@ dependencies = [
  "pythnet-sdk 2.3.1",
  "solana-program",
  "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
+name = "pyth-price-store"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bbb76932606741e8b690d51d3e78df620df4a13474a2ca5f53ded5f70522cdc"
+dependencies = [
+ "bytemuck",
  "thiserror",
 ]
 
@@ -5581,6 +5591,7 @@ dependencies = [
  "once_cell",
  "ouroboros",
  "pyth-oracle",
+ "pyth-price-store",
  "pythnet-sdk 1.13.6",
  "rand 0.7.3",
  "rayon",

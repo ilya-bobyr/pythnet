@@ -99,3 +99,10 @@ members = [
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+
+[patch.crates-io]
+# See root level `Cargo.toml` for an explanation of this patch.  Keep them in
+# sync.
+solana-sdk = { path = "../../sdk" }
+solana-program = { path = "../../sdk/program" }
+solana-zk-token-sdk = { path = "../../zk-token-sdk" }

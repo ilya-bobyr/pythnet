@@ -96,3 +96,30 @@ exclude = [
 
 # This prevents a Travis CI error when building for Windows.
 resolver = "2"
+
+[patch.crates-io]
+# We include a number of crates as our dependencies above from crates.io:
+#
+#  * spl-associated-token-account
+#  * spl-instruction-padding
+#  * spl-memo
+#  * spl-pod
+#  * spl-token
+#  * spl-token-2022
+#  * spl-token-metadata-interface
+#
+# They, in turn, depend on a number of crates that we also include directly
+# using `path` specifications.  For example, `spl-token` depends on
+# `solana-program`.
+#
+# Unfortunately, Cargo will try to resolve the `spl-token` `solana-program`
+# dependency only using what is available on crates.io.  Taking the latest from
+# crates.io is likely to mismatch what we have locally, creating a dependency
+# reposition error.  We end up with two versions of `solana-program` and
+# `solana-zk-token-sdk` and all of their dependencies in our build tree.
+#
+# There is a similar override in `programs/bpf/Cargo.toml`.  Please keep both in
+# sync.
+solana-sdk = { path = "sdk" }
+solana-program = { path = "sdk/program" }
+solana-zk-token-sdk = { path = "zk-token-sdk" }

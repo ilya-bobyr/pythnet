@@ -480,6 +480,8 @@ pub mod borsh;
 #[cfg(feature = "borsh")]
 pub mod borsh0_10;
 #[cfg(feature = "borsh")]
+pub mod borsh0_9;
+#[cfg(feature = "borsh")]
 pub mod borsh1;
 pub mod bpf_loader;
 pub mod bpf_loader_deprecated;

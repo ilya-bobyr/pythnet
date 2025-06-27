@@ -280,7 +280,7 @@ pub mod update_syscall_base_costs {
 }
 
 pub mod stake_deactivate_delinquent_instruction {
-    solana_sdk::declare_id!("437r62HoAdUb63amq3D7ENnBLDhHT2xY8eFkLJYVKK4x");
+    solana_sdk::declare_id!("5nrNJ4GLYdCZ3ysmZH99GkrZHQ3fv17N7ZhhzDoWB5Ar");
 }
 
 pub mod stake_redelegate_instruction {
@@ -344,7 +344,7 @@ pub mod stake_split_uses_rent_sysvar {
 }
 
 pub mod add_get_minimum_delegation_instruction_to_stake_program {
-    solana_sdk::declare_id!("St8k9dVXP97xT6faW24YmRSYConLbhsMJA4TJTBLmMT");
+    solana_sdk::declare_id!("EapZK4h6bS6w5TsBf4UFn9NTbs7vxE3KyHC7ed1V71CX");
 }
 
 pub mod error_on_syscall_bpf_function_hash_collisions {

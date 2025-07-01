@@ -3161,6 +3161,7 @@ impl Node {
         info.set_serve_repair_quic((addr, serve_repair_quic_port))
             .unwrap();
         trace!("new ContactInfo: {:?}", info);
+        eprintln!("D.ClusterInfo.new_with_external_ip: {:?}", info);
 
         Node {
             info,

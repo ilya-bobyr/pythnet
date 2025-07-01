@@ -93,11 +93,19 @@ impl VotingService {
 
         if !upcoming_leader_sockets.is_empty() {
             for tpu_vote_socket in upcoming_leader_sockets {
-                let _ = cluster_info.send_transaction(vote_op.tx(), Some(tpu_vote_socket));
+                eprintln!("D:handle_vote.upcoming_leader_sockets: {tpu_vote_socket:?}");
+                let res = cluster_info.send_transaction(vote_op.tx(), Some(tpu_vote_socket));
+                if let Err(err) = res {
+                    eprintln!("D:handle_vote:   Failed: {err:?}");
+                }
             }
         } else {
+            println!("D:handle_vote: send send to self");
             // Send to our own tpu vote socket if we cannot find a leader to send to
-            let _ = cluster_info.send_transaction(vote_op.tx(), None);
+            let res = cluster_info.send_transaction(vote_op.tx(), None);
+            if let Err(err) = res {
+                eprintln!("D:handle_vote:   Failed: {err:?}");
+            }
         }
 
         match vote_op {

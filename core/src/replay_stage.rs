@@ -3113,38 +3113,40 @@ impl ReplayStage {
                     }
                 }
 
-                let _block_id = if bank.collector_id() != my_pubkey {
-                    // If the block does not have at least DATA_SHREDS_PER_FEC_BLOCK correctly retransmitted
-                    // shreds in the last FEC set, mark it dead. No reason to perform this check on our leader block.
-                    match blockstore.check_last_fec_set_and_get_block_id(
-                        bank.slot(),
-                        bank.hash(),
-                        &bank.feature_set,
-                    ) {
-                        Ok(block_id) => block_id,
-                        Err(result_err) => {
-                            let root = bank_forks.read().unwrap().root();
-                            Self::mark_dead_slot(
-                                blockstore,
-                                bank,
-                                root,
-                                &result_err,
-                                rpc_subscriptions,
-                                duplicate_slots_tracker,
-                                duplicate_confirmed_slots,
-                                epoch_slots_frozen_slots,
-                                progress,
-                                heaviest_subtree_fork_choice,
-                                duplicate_slots_to_repair,
-                                ancestor_hashes_replay_update_sender,
-                                purge_repair_slot_counter,
-                            );
-                            continue;
-                        }
-                    }
-                } else {
-                    None
-                };
+                // TODO Add a feature flag to allow this behavior to be enabled after the whole
+                // cluster switches to 2.0.
+                //- let _block_id = if bank.collector_id() != my_pubkey {
+                //-     // If the block does not have at least DATA_SHREDS_PER_FEC_BLOCK correctly retransmitted
+                //-     // shreds in the last FEC set, mark it dead. No reason to perform this check on our leader block.
+                //-     match blockstore.check_last_fec_set_and_get_block_id(
+                //-         bank.slot(),
+                //-         bank.hash(),
+                //-         &bank.feature_set,
+                //-     ) {
+                //-         Ok(block_id) => block_id,
+                //-         Err(result_err) => {
+                //-             let root = bank_forks.read().unwrap().root();
+                //-             Self::mark_dead_slot(
+                //-                 blockstore,
+                //-                 bank,
+                //-                 root,
+                //-                 &result_err,
+                //-                 rpc_subscriptions,
+                //-                 duplicate_slots_tracker,
+                //-                 duplicate_confirmed_slots,
+                //-                 epoch_slots_frozen_slots,
+                //-                 progress,
+                //-                 heaviest_subtree_fork_choice,
+                //-                 duplicate_slots_to_repair,
+                //-                 ancestor_hashes_replay_update_sender,
+                //-                 purge_repair_slot_counter,
+                //-             );
+                //-             continue;
+                //-         }
+                //-     }
+                //- } else {
+                //-     None
+                //- };
 
                 let r_replay_stats = replay_stats.read().unwrap();
                 let replay_progress = bank_progress.replay_progress.clone();

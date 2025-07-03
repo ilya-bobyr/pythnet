@@ -288,8 +288,8 @@ mod tests {
             .write()
             .unwrap()
             .insert(0, Arc::new(RwLock::new(map)));
-        let c1 = ContactInfo::new(k1, /*wallclock:*/ 0, /*shred_version:*/ 0);
-        let c2 = ContactInfo::new(k2, /*wallclock:*/ 0, /*shred_version:*/ 0);
+        let c1 = ContactInfo::new_localhost(&k1, /*wallclock:*/ 0);
+        let c2 = ContactInfo::new_localhost(&k2, /*wallclock:*/ 0);
         assert_eq!(cs.compute_weights(0, &[c1, c2]), vec![u64::MAX / 4, 1]);
     }
 
@@ -315,8 +315,8 @@ mod tests {
         .into_iter()
         .collect();
         *cs.validator_stakes.write().unwrap() = Arc::new(validator_stakes);
-        let c1 = ContactInfo::new(k1, /*wallclock:*/ 0, /*shred_version:*/ 0);
-        let c2 = ContactInfo::new(k2, /*wallclock:*/ 0, /*shred_version:*/ 0);
+        let c1 = ContactInfo::new_localhost(&k1, /*wallclock:*/ 0);
+        let c2 = ContactInfo::new_localhost(&k2, /*wallclock:*/ 0);
         assert_eq!(cs.compute_weights(0, &[c1, c2]), vec![u64::MAX / 4 + 1, 1]);
     }
 
@@ -324,10 +324,9 @@ mod tests {
     fn test_best_completed_slot_peer() {
         let cs = ClusterSlots::default();
         let contact_infos: Vec<_> = std::iter::repeat_with(|| {
-            ContactInfo::new(
-                solana_sdk::pubkey::new_rand(),
+            ContactInfo::new_localhost(
+                &solana_sdk::pubkey::new_rand(),
                 0, // wallclock
-                0, // shred_version
             )
         })
         .take(2)

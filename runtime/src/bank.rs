@@ -2034,6 +2034,11 @@ impl Bank {
                 .as_ref()
                 .map(|account| from_account::<SlotHashes, _>(account).unwrap())
                 .unwrap_or_default();
+            println!(
+                "D: Bank::update_slot_hashes(): parent_slot: {}, parent_hash: {}",
+                self.parent_slot,
+                self.parent_hash,
+            );
             slot_hashes.add(self.parent_slot, self.parent_hash);
             create_account(
                 &slot_hashes,
@@ -5583,7 +5588,7 @@ impl Bank {
     /// Should it be included in *this* bank?
     fn should_include_epoch_accounts_hash(&self) -> bool {
         return false;
-        
+
         if !epoch_accounts_hash_utils::is_enabled_this_epoch(self) {
             return false;
         }

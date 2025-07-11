@@ -205,6 +205,12 @@ fn check_and_filter_proposed_vote_state(
     proposed_hash: Hash,
     slot_hashes: &[(Slot, Hash)],
 ) -> Result<(), VoteError> {
+    println!(
+        "D: vote_state::check_and_filter_proposed_vote_state(): \
+         proposed_root: {:?}, proposed_hash: {}",
+        proposed_root, proposed_hash,
+    );
+
     if proposed_lockouts.is_empty() {
         return Err(VoteError::EmptySlots);
     }

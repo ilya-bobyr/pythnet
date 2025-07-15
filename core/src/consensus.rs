@@ -3,11 +3,13 @@ use {
         heaviest_subtree_fork_choice::HeaviestSubtreeForkChoice,
         latest_validator_votes_for_frozen_banks::LatestValidatorVotesForFrozenBanks,
         progress_map::{LockoutIntervals, ProgressMap},
+        replay_stage::DUPLICATE_THRESHOLD,
         tower1_7_14::Tower1_7_14,
         tower_storage::{SavedTower, SavedTowerVersions, TowerStorage},
     },
     chrono::prelude::*,
     solana_ledger::{ancestor_iterator::AncestorIterator, blockstore::Blockstore, blockstore_db},
+    solana_metrics::datapoint_info,
     solana_runtime::{
         bank::Bank, bank_forks::BankForks, commitment::VOTE_THRESHOLD_SIZE,
         vote_account::VoteAccountsHashMap,
@@ -990,6 +992,63 @@ impl Tower {
         self.last_switch_threshold_check.is_none()
     }
 
+    /// Checks if a vote should be cast, assuming `threshold_size` of stake is observed on the
+    /// current fork and we have a lockout of `threshold_depth`.
+    fn check_vote_stake_threshold_at_depth(
+        current_slot: u64,
+        threshold_depth: usize,
+        threshold_size: f64,
+        last_curve_point: bool,
+        &Lockout {
+            slot,
+            confirmation_count,
+        }: &Lockout,
+        vote_state_before_applying_vote: &VoteState,
+        voted_stakes: &VotedStakes,
+        total_stake: u64,
+    ) -> bool {
+        let Some(fork_stake) = voted_stakes.get(&slot) else {
+            // We haven't seen any votes on this fork yet, so no stake
+            return false;
+        };
+
+        let lockout = *fork_stake as f64 / total_stake as f64;
+        trace!(
+            "checking while in slot: {current_slot},\
+             threshold_depth: {threshold_depth}, threshold_size: {threshold_size}, \
+             lockout slot: {slot}, lockout confirmation_count: {confirmation_count}, \
+             fork_stake: {fork_stake}, total_stake: {total_stake}",
+        );
+
+        if confirmation_count as usize > threshold_depth {
+            for old_vote in &vote_state_before_applying_vote.votes {
+                if old_vote.slot == slot && old_vote.confirmation_count == confirmation_count {
+                    // If you bounce back to voting on the main fork after not
+                    // voting for a while, your latest vote N on the main fork
+                    // might pop off a lot of the stake of votes in the tower.
+                    // This stake would have rolled up to earlier votes in the
+                    // tower, so skip the stake check.
+                    return true;
+                }
+            }
+        }
+
+        if lockout > threshold_size {
+            return true;
+        }
+
+        datapoint_info!(
+            "core-consensus-vote-stake-threshold-not-met",
+            ("current-slot", current_slot, i64),
+            ("vote-blocked-at-depth", threshold_depth, i64),
+            ("observed-voted-stake", lockout, f64),
+        );
+        if last_curve_point {
+            trace!("voting delayed due to the new threshold curve point");
+        }
+        false
+    }
+
     pub fn check_vote_stake_threshold(
         &self,
         slot: Slot,
@@ -998,30 +1057,104 @@ impl Tower {
     ) -> bool {
         let mut vote_state = self.vote_state.clone();
         vote_state.process_slot_vote_unchecked(slot);
-        let vote = vote_state.nth_recent_vote(self.threshold_depth);
-        if let Some(vote) = vote {
-            if let Some(fork_stake) = voted_stakes.get(&vote.slot) {
-                let lockout = *fork_stake as f64 / total_stake as f64;
-                trace!(
-                    "fork_stake slot: {}, vote slot: {}, lockout: {} fork_stake: {} total_stake: {}",
-                    slot, vote.slot, lockout, fork_stake, total_stake
-                );
-                if vote.confirmation_count as usize > self.threshold_depth {
-                    for old_vote in &self.vote_state.votes {
-                        if old_vote.slot == vote.slot
-                            && old_vote.confirmation_count == vote.confirmation_count
-                        {
-                            return true;
-                        }
-                    }
-                }
-                lockout > self.threshold_size
-            } else {
-                false
-            }
+
+        // Depending on the vote depths we apply different thresholds.  This allows us to avoid
+        // voting too early in certain rather special cases, that tend to mostly create longer
+        // lockout time, rather than improving the consensus.
+        //
+        // We have identified 2 additional points besides the final threshold of
+        // `VOTE_THRESHOLD_DEPTH` (66.6%) that we check at the slot depth of `VOTE_THRESHOLD_DEPTH`
+        // (8).
+        //
+        // We are trying to balance between "don't slow down the cluster if votes are a little bit
+        // delayed" vs. "stop voting before I get locked out for a long time if the cluster isn't
+        // with me."  Locked out nodes cause slower consensus later, as they fail to participate in
+        // the subsequent voting, and potentially prevent optimistic confirmations.
+        //
+        // For now this logic is special cased for Pythnet.  Ideally, we would put this curve into
+        // `Tower`, as a replacement for the `threshold_depth`/`threshold_size` fields.  But as
+        // `Tower` is serialized, such a change would require a new version of the `Tower` struct.
+        //
+        // We treat lower threshold requirements for shorter depths as a client specific behavior,
+        // and do not preserve it in the tower storage.
+
+        // When we reach a depth of 4 (meaning a 16 slots of lockout) we want to make sure we are on
+        // a fork that the rest of the cluster will prefer, should our view be consistent with every
+        // one else's view.  `SWITCH_FORK_THRESHOLD` is used in the
+        // `make_check_switch_threshold_decision()` function, in the code that decides if a fork
+        // switch would be reasonable.  Essentially we do not want to vote if we would not have
+        // switched to this fork from another fork.
+        const SWITCH_FORK_DEPTH: usize = 4;
+
+        // Next inflection point is when we reach a lockout of 5 slots (which is already 32 slots of
+        // lockout).  At this point we want to see more than 50% of the stake on our fork, before we
+        // commit for an extra 16 slots of lockout (compared to the previous 4 slots lockout at 38%
+        // in `SWITCH_FORK_DEPTH`).
+        //
+        // Logic responsible for the duplicate block detection has a `DUPLICATE_THRESHOLD` constant
+        // that holds a percentage calculated as 52%, which we use here.  This code is not as much
+        // about the duplicate blocks, as it is about having enough confidence that we are the right
+        // fork before we proceed.  But `DUPLICATE_THRESHOLD` seems semantically similar enough, and
+        // some thought has been put into calculating this number (see documentation for it).
+        //
+        // A depth of 5 allows us to "skip" all 4 slots for a single leader.  The expectation is
+        // that if we span two leaders, we should see more than 50% of stake before we commit
+        // further.  As, normally, we expect most of the stake to vote in the next slot.  So it is
+        // more likely that two leaders must misbehaving in order for us to see a lockout of 5, or
+        // we are the ones who are on the wrong fork we we just do not know it.  The likelihood of
+        // two misbehaving leaders is relatively low.
+        const TWO_LEADERS_DEPTH: usize = 5;
+
+        // `self.threshold_depth` and `self.threshold_size`, by default, will be an ultra
+        // conservative threshold that we use to ensure that we don't face insanely long lockouts.
+        // Normally they are `8` and `66.6%` respectively.  In tests they might be configured
+        // differently and are serialized into the tower storage.
+
+        // As `self.threshold_depth` and `self.threshold_size` are not constants and are configured
+        // in tests, curve construction here get a bit finicky.  Again, this is a Pythnet specific
+        // hack, that would need to be replaced with a curve stored directly in the `Tower`
+        // instance, if this change is going to be upstreamed.
+        let threshold_curve = if self.threshold_depth < SWITCH_FORK_DEPTH {
+            vec![(self.threshold_depth, self.threshold_size)]
+        } else if self.threshold_depth < TWO_LEADERS_DEPTH {
+            vec![
+                (SWITCH_FORK_DEPTH, SWITCH_FORK_THRESHOLD),
+                (self.threshold_depth, self.threshold_size),
+            ]
         } else {
-            true
+            vec![
+                (SWITCH_FORK_DEPTH, SWITCH_FORK_THRESHOLD),
+                (TWO_LEADERS_DEPTH, DUPLICATE_THRESHOLD),
+                (self.threshold_depth, self.threshold_size),
+            ]
+        };
+        let threshold_curve_len = threshold_curve.len();
+
+        trace!("fork_stake slot: {slot}");
+
+        // Check one by one. If any threshold fails, return failure.
+        for (i, (threshold_depth, threshold_size)) in threshold_curve.into_iter().enumerate() {
+            let Some(lockout_at_depth) = vote_state.nth_recent_vote(threshold_depth) else {
+                continue;
+            };
+
+            let last_curve_point = i.saturating_add(1) == threshold_curve_len;
+
+            if !Self::check_vote_stake_threshold_at_depth(
+                slot,
+                threshold_depth,
+                threshold_size,
+                last_curve_point,
+                lockout_at_depth,
+                &self.vote_state,
+                voted_stakes,
+                total_stake,
+            ) {
+                return false;
+            }
         }
+
+        true
     }
 
     /// Update lockouts for all the ancestors
@@ -1431,6 +1564,8 @@ pub fn reconcile_blockstore_roots_with_external_source(
 
 #[cfg(test)]
 pub mod test {
+    use static_assertions::const_assert_eq;
+
     use {
         super::*,
         crate::{
@@ -2347,6 +2482,107 @@ pub mod test {
         tower.record_vote(0, Hash::default());
         assert!(!tower.check_vote_stake_threshold(1, &stakes, 2));
     }
+
+    #[test]
+    fn test_check_vote_threshold_below_threshold_1() {
+        // This tests is written with an assertions that `VOTE_THRESHOLD_DEPTH` is 8.  If the
+        // `VOTE_THRESHOLD_DEPTH` changes, tower construction in this test needs to be updated.
+        const_assert_eq!(VOTE_THRESHOLD_DEPTH, 8);
+
+        let mut tower = Tower::new_for_tests(VOTE_THRESHOLD_DEPTH, 0.67);
+        let stakes = vec![
+            (0, 10),
+            (1, 9),
+            (2, 8),
+            (3, 7),
+            (4, 3),
+            (5, 3),
+            (6, 3),
+            (7, 3),
+        ]
+        .into_iter()
+        .collect();
+        for slot in 0..(VOTE_THRESHOLD_DEPTH as u64) {
+            tower.record_vote(slot, Hash::default());
+        }
+        assert!(!tower.check_vote_stake_threshold(VOTE_THRESHOLD_DEPTH as u64, &stakes, 10));
+    }
+
+    #[test]
+    fn test_check_vote_threshold_below_threshold_2() {
+        // This tests is written with an assertions that `VOTE_THRESHOLD_DEPTH` is 8.  If the
+        // `VOTE_THRESHOLD_DEPTH` changes, tower construction in this test needs to be updated.
+        const_assert_eq!(VOTE_THRESHOLD_DEPTH, 8);
+
+        let mut tower = Tower::new_for_tests(VOTE_THRESHOLD_DEPTH, 0.67);
+        let stakes = vec![
+            (0, 10),
+            (1, 9),
+            (2, 8),
+            (3, 5),
+            (4, 4),
+            (5, 3),
+            (6, 3),
+            (7, 3),
+        ]
+        .into_iter()
+        .collect();
+        for slot in 0..(VOTE_THRESHOLD_DEPTH as u64) {
+            tower.record_vote(slot, Hash::default());
+        }
+        assert!(!tower.check_vote_stake_threshold(VOTE_THRESHOLD_DEPTH as u64, &stakes, 10));
+    }
+
+    #[test]
+    fn test_check_vote_threshold_below_threshold_3() {
+        // This tests is written with an assertions that `VOTE_THRESHOLD_DEPTH` is 8.  If the
+        // `VOTE_THRESHOLD_DEPTH` changes, tower construction in this test needs to be updated.
+        const_assert_eq!(VOTE_THRESHOLD_DEPTH, 8);
+
+        let mut tower = Tower::new_for_tests(VOTE_THRESHOLD_DEPTH, 0.67);
+        let stakes = vec![
+            (0, 6),
+            (1, 6),
+            (2, 6),
+            (3, 6),
+            (4, 4),
+            (5, 3),
+            (6, 3),
+            (7, 3),
+        ]
+        .into_iter()
+        .collect();
+        for slot in 0..(VOTE_THRESHOLD_DEPTH as u64) {
+            tower.record_vote(slot, Hash::default());
+        }
+        assert!(!tower.check_vote_stake_threshold(VOTE_THRESHOLD_DEPTH as u64, &stakes, 10));
+    }
+
+    #[test]
+    fn test_check_vote_threshold_above_thresholds() {
+        // This tests is written with an assertions that `VOTE_THRESHOLD_DEPTH` is 8.  If the
+        // `VOTE_THRESHOLD_DEPTH` changes, tower construction in this test needs to be updated.
+        const_assert_eq!(VOTE_THRESHOLD_DEPTH, 8);
+
+        let mut tower = Tower::new_for_tests(VOTE_THRESHOLD_DEPTH, 0.67);
+        let stakes = vec![
+            (0, 10),
+            (1, 9),
+            (2, 8),
+            (3, 7),
+            (4, 6),
+            (5, 5),
+            (6, 4),
+            (7, 3),
+        ]
+        .into_iter()
+        .collect();
+        for slot in 0..(VOTE_THRESHOLD_DEPTH as u64) {
+            tower.record_vote(slot, Hash::default());
+        }
+        assert!(tower.check_vote_stake_threshold(VOTE_THRESHOLD_DEPTH as u64, &stakes, 10));
+    }
+
     #[test]
     fn test_check_vote_threshold_above_threshold() {
         let mut tower = Tower::new_for_tests(1, 0.67);

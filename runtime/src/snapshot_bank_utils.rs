@@ -38,6 +38,7 @@ use {
     solana_measure::{measure, measure::Measure},
     solana_sdk::{
         clock::{Epoch, Slot},
+        feature_set,
         genesis_config::GenesisConfig,
         pubkey::Pubkey,
         slot_history::{Check, SlotHistory},
@@ -216,7 +217,11 @@ pub fn bank_from_snapshot_archives(
         snapshot_archive_info.hash,
     )?;
 
-    let base = incremental_snapshot_archive_info.is_some().then(|| {
+    let base = (incremental_snapshot_archive_info.is_some()
+        && bank
+            .feature_set
+            .is_active(&feature_set::incremental_snapshot_only_incremental_hash_calculation::id()))
+    .then(|| {
         let base_slot = full_snapshot_archive_info.slot();
         let base_capitalization = bank
             .rc
@@ -967,8 +972,19 @@ pub fn bank_to_incremental_snapshot_archive(
     bank.rehash(); // Bank accounts may have been manually modified by the caller
     bank.force_flush_accounts_cache();
     bank.clean_accounts(Some(full_snapshot_slot));
-    let calculated_incremental_accounts_hash =
-        bank.update_incremental_accounts_hash(full_snapshot_slot);
+
+    let mut calculated_incremental_accounts_hash = None;
+    let mut calculated_accounts_hash = None;
+    if bank
+        .feature_set
+        .is_active(&feature_set::incremental_snapshot_only_incremental_hash_calculation::id())
+    {
+        calculated_incremental_accounts_hash =
+            Some(bank.update_incremental_accounts_hash(full_snapshot_slot));
+    } else {
+        calculated_accounts_hash =
+            Some(bank.update_accounts_hash(CalcAccountsHashDataSource::Storages, false, false));
+    }
 
     let snapshot_storages = bank.get_snapshot_storages(Some(full_snapshot_slot));
     let status_cache_slot_deltas = bank.status_cache.read().unwrap().root_slot_deltas();
@@ -980,33 +996,48 @@ pub fn bank_to_incremental_snapshot_archive(
         None,
     );
 
-    let (full_accounts_hash, full_capitalization) = bank
-        .rc
-        .accounts
-        .accounts_db
-        .get_accounts_hash(full_snapshot_slot)
-        .expect("base accounts hash is required for incremental snapshot");
-    let (incremental_accounts_hash, incremental_capitalization) = bank
-        .rc
-        .accounts
-        .accounts_db
-        .get_incremental_accounts_hash(bank.slot())
-        .expect("incremental accounts hash is required for incremental snapshot");
-    assert_eq!(
-        incremental_accounts_hash,
-        calculated_incremental_accounts_hash,
-    );
-    let bank_incremental_snapshot_persistence = BankIncrementalSnapshotPersistence {
-        full_slot: full_snapshot_slot,
-        full_hash: full_accounts_hash.into(),
-        full_capitalization,
-        incremental_hash: incremental_accounts_hash.into(),
-        incremental_capitalization,
+    let (accounts_hash_kind, bank_incremental_snapshot_persistence) = if bank
+        .feature_set
+        .is_active(&feature_set::incremental_snapshot_only_incremental_hash_calculation::id())
+    {
+        let (full_accounts_hash, full_capitalization) = bank
+            .rc
+            .accounts
+            .accounts_db
+            .get_accounts_hash(full_snapshot_slot)
+            .expect("base accounts hash is required for incremental snapshot");
+        let (incremental_accounts_hash, incremental_capitalization) = bank
+            .rc
+            .accounts
+            .accounts_db
+            .get_incremental_accounts_hash(bank.slot())
+            .expect("incremental accounts hash is required for incremental snapshot");
+        assert_eq!(
+            Some(incremental_accounts_hash),
+            calculated_incremental_accounts_hash,
+        );
+        let bank_incremental_snapshot_persistence = BankIncrementalSnapshotPersistence {
+            full_slot: full_snapshot_slot,
+            full_hash: full_accounts_hash.into(),
+            full_capitalization,
+            incremental_hash: incremental_accounts_hash.into(),
+            incremental_capitalization,
+        };
+        (
+            incremental_accounts_hash.into(),
+            Some(bank_incremental_snapshot_persistence),
+        )
+    } else {
+        let accounts_hash = bank
+            .get_accounts_hash()
+            .expect("accounts hash is required for snapshot");
+        assert_eq!(Some(accounts_hash), calculated_accounts_hash,);
+        (accounts_hash.into(), None)
     };
     let snapshot_package = SnapshotPackage::new(
         accounts_package,
-        incremental_accounts_hash.into(),
-        Some(bank_incremental_snapshot_persistence),
+        accounts_hash_kind,
+        bank_incremental_snapshot_persistence,
     );
 
     // Note: Since the snapshot_storages above are *only* the incremental storages,

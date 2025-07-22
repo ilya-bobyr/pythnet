@@ -159,6 +159,11 @@ fn run_check_duplicate(
             root_bank = bank_forks.read().unwrap().root_bank();
         }
         let shred_slot = shred.slot();
+        let send_index_and_erasure_conflicts = cluster_nodes::check_feature_activation(
+            &feature_set::index_erasure_conflict_duplicate_proofs::id(),
+            shred_slot,
+            &root_bank,
+        );
         let merkle_conflict_duplicate_proofs = cluster_nodes::check_feature_activation(
             &feature_set::merkle_conflict_duplicate_proofs::id(),
             shred_slot,
@@ -171,7 +176,13 @@ fn run_check_duplicate(
         );
         let (shred1, shred2) = match shred {
             PossibleDuplicateShred::LastIndexConflict(shred, conflict)
-            | PossibleDuplicateShred::ErasureConflict(shred, conflict) => (shred, conflict),
+            | PossibleDuplicateShred::ErasureConflict(shred, conflict) => {
+                if send_index_and_erasure_conflicts {
+                    (shred, conflict)
+                } else {
+                    return Ok(());
+                }
+            }
             PossibleDuplicateShred::MerkleRootConflict(shred, conflict) => {
                 if merkle_conflict_duplicate_proofs {
                     // Although this proof can be immediately stored on detection, we wait until

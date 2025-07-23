@@ -24,7 +24,7 @@ use {
         bpf_loader_deprecated,
         clock::Slot,
         epoch_schedule::EpochSchedule,
-        feature_set::FeatureSet,
+        feature_set::{native_programs_consume_cu, FeatureSet},
         hash::Hash,
         instruction::{AccountMeta, InstructionError},
         native_loader,
@@ -69,6 +69,9 @@ macro_rules! declare_process_instruction {
                     $inner
 
                 let consumption_result = if $cu_to_consume > 0
+                    && invoke_context
+                        .get_feature_set()
+                        .is_active(&solana_sdk::feature_set::native_programs_consume_cu::id())
                 {
                     invoke_context.consume_checked($cu_to_consume)
                 } else {
@@ -551,7 +554,13 @@ impl<'a> InvokeContext<'a> {
         let post_remaining_units = self.get_remaining();
         *compute_units_consumed = pre_remaining_units.saturating_sub(post_remaining_units);
 
-        if builtin_id == program_id && result.is_ok() && *compute_units_consumed == 0 {
+        if builtin_id == program_id
+            && result.is_ok()
+            && *compute_units_consumed == 0
+            && self
+                .get_feature_set()
+                .is_active(&native_programs_consume_cu::id())
+        {
             return Err(InstructionError::BuiltinProgramsMustConsumeComputeUnits);
         }
 

@@ -743,9 +743,18 @@ pub fn process_new_vote_state(
 
     if vote_state.root_slot != new_root {
         // Award vote credits based on the number of slots that were voted on and have reached finality
-        // For each finalized slot, there was one voted-on slot in the new vote state that was responsible for
-        // finalizing it. Each of those votes is awarded 1 credit.
-        vote_state.increment_credits(epoch, earned_credits);
+        if feature_set
+            .map(|feature_set| {
+                feature_set.is_active(&feature_set::vote_state_update_credit_per_dequeue::id())
+            })
+            .unwrap_or(false)
+        {
+            // For each finalized slot, there was one voted-on slot in the new vote state that was responsible for
+            // finalizing it. Each of those votes is awarded 1 credit.
+            vote_state.increment_credits(epoch, earned_credits);
+        } else {
+            vote_state.increment_credits(epoch, 1);
+        }
     }
     if let Some(timestamp) = timestamp {
         let last_slot = new_state.back().unwrap().slot();
@@ -2045,7 +2054,8 @@ mod tests {
             vec![227, 228, 229, 230, 231, 232, 233, 234, 235, 236],
         ];
 
-        let feature_set = FeatureSet::default();
+        let mut feature_set = FeatureSet::default();
+        feature_set.activate(&feature_set::vote_state_update_credit_per_dequeue::id(), 1);
 
         for vote_group in test_vote_groups {
             // Duplicate vote_state so that the new vote can be applied
@@ -2251,6 +2261,7 @@ mod tests {
         ];
 
         let mut feature_set = FeatureSet::default();
+        feature_set.activate(&feature_set::vote_state_update_credit_per_dequeue::id(), 1);
         feature_set.activate(&feature_set::timely_vote_credits::id(), 1);
         feature_set.activate(&feature_set::deprecate_unused_legacy_vote_plumbing::id(), 1);
 
@@ -2386,6 +2397,7 @@ mod tests {
         ];
 
         let mut feature_set = FeatureSet::default();
+        feature_set.activate(&feature_set::vote_state_update_credit_per_dequeue::id(), 1);
         feature_set.activate(&feature_set::timely_vote_credits::id(), 1);
         feature_set.activate(&feature_set::deprecate_unused_legacy_vote_plumbing::id(), 1);
 

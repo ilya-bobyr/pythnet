@@ -10,7 +10,6 @@ use {
         stake_history::StakeHistory,
     },
     solana_vote_program::vote_state::VoteState,
-    std::cmp::Ordering,
 };
 
 /// captures a rewards round as lamports to be awarded
@@ -98,6 +97,8 @@ fn calculate_stake_points(
         vote_state,
         stake_history,
         inflation_point_calc_tracer,
+        true, // this is safe because this flag shouldn't affect the
+        // `points` field of the returned struct in any way
         new_rate_activation_epoch,
     )
     .points
@@ -111,13 +112,14 @@ pub(crate) fn calculate_stake_points_and_credits(
     new_vote_state: &VoteState,
     stake_history: &StakeHistory,
     inflation_point_calc_tracer: Option<impl Fn(&InflationPointCalculationEvent)>,
+    credits_auto_rewind: bool,
     new_rate_activation_epoch: Option<Epoch>,
 ) -> CalculatedStakePoints {
     let credits_in_stake = stake.credits_observed;
     let credits_in_vote = new_vote_state.credits();
     // if there is no newer credits since observed, return no point
-    match credits_in_vote.cmp(&credits_in_stake) {
-        Ordering::Less => {
+    if credits_in_vote <= credits_in_stake {
+        if credits_auto_rewind && credits_in_vote < credits_in_stake {
             if let Some(inflation_point_calc_tracer) = inflation_point_calc_tracer.as_ref() {
                 inflation_point_calc_tracer(&SkippedReason::ZeroCreditsAndReturnRewinded.into());
             }
@@ -144,19 +146,22 @@ pub(crate) fn calculate_stake_points_and_credits(
                 new_credits_observed: credits_in_vote,
                 force_credits_update_with_skipped_reward: true,
             };
-        }
-        Ordering::Equal => {
+        } else {
+            // change the above `else` to `else if credits_in_vote == credits_in_stake`
+            // (and remove the outermost enclosing `if`) when cleaning credits_auto_rewind
+            // after activation
+
             if let Some(inflation_point_calc_tracer) = inflation_point_calc_tracer.as_ref() {
                 inflation_point_calc_tracer(&SkippedReason::ZeroCreditsAndReturnCurrent.into());
             }
-            // don't hint caller and return current value if credits remain unchanged (= delinquent)
+            // don't hint the caller and return current value if credits_auto_rewind is off or
+            // credits remain to be unchanged (= delinquent)
             return CalculatedStakePoints {
                 points: 0,
                 new_credits_observed: credits_in_stake,
                 force_credits_update_with_skipped_reward: false,
             };
         }
-        Ordering::Greater => {}
     }
 
     let mut points = 0;

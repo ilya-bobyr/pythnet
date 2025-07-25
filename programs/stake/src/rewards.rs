@@ -38,6 +38,7 @@ pub fn redeem_rewards(
     point_value: &PointValue,
     stake_history: &StakeHistory,
     inflation_point_calc_tracer: Option<impl Fn(&InflationPointCalculationEvent)>,
+    credits_auto_rewind: bool,
     new_rate_activation_epoch: Option<Epoch>,
 ) -> Result<(u64, u64), InstructionError> {
     if let StakeStateV2::Stake(meta, mut stake, stake_flags) = stake_state {
@@ -64,6 +65,7 @@ pub fn redeem_rewards(
             vote_state,
             stake_history,
             inflation_point_calc_tracer,
+            credits_auto_rewind,
             new_rate_activation_epoch,
         ) {
             stake_account.checked_add_lamports(stakers_reward)?;
@@ -85,6 +87,7 @@ fn redeem_stake_rewards(
     vote_state: &VoteState,
     stake_history: &StakeHistory,
     inflation_point_calc_tracer: Option<impl Fn(&InflationPointCalculationEvent)>,
+    credits_auto_rewind: bool,
     new_rate_activation_epoch: Option<Epoch>,
 ) -> Option<(u64, u64)> {
     if let Some(inflation_point_calc_tracer) = inflation_point_calc_tracer.as_ref() {
@@ -100,6 +103,7 @@ fn redeem_stake_rewards(
         vote_state,
         stake_history,
         inflation_point_calc_tracer.as_ref(),
+        credits_auto_rewind,
         new_rate_activation_epoch,
     )
     .map(|calculated_stake_rewards| {
@@ -131,6 +135,7 @@ fn calculate_stake_rewards(
     vote_state: &VoteState,
     stake_history: &StakeHistory,
     inflation_point_calc_tracer: Option<impl Fn(&InflationPointCalculationEvent)>,
+    credits_auto_rewind: bool,
     new_rate_activation_epoch: Option<Epoch>,
 ) -> Option<CalculatedStakeRewards> {
     // ensure to run to trigger (optional) inflation_point_calc_tracer
@@ -143,6 +148,7 @@ fn calculate_stake_rewards(
         vote_state,
         stake_history,
         inflation_point_calc_tracer.as_ref(),
+        credits_auto_rewind,
         new_rate_activation_epoch,
     );
 
@@ -253,6 +259,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -274,6 +281,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -305,6 +313,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -330,6 +339,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -352,6 +362,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -377,6 +388,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -400,6 +412,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -425,6 +438,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -444,6 +458,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -460,6 +475,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -483,6 +499,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -506,6 +523,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -521,6 +539,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None
             )
         );
@@ -528,6 +547,22 @@ mod tests {
         // credits_observed is auto-rewinded when vote_state credits are assumed to have been
         // recreated
         stake.credits_observed = 1000;
+        // this is old behavior; return the pre-recreation (large) credits from stake account
+        assert_eq!(
+            CalculatedStakePoints {
+                points: 0,
+                new_credits_observed: 1000,
+                force_credits_update_with_skipped_reward: false,
+            },
+            calculate_stake_points_and_credits(
+                &stake,
+                &vote_state,
+                &StakeHistory::default(),
+                null_tracer(),
+                false,
+                None
+            )
+        );
         // this is new behavior 1; return the post-recreation rewinded credits from the vote account
         assert_eq!(
             CalculatedStakePoints {
@@ -540,6 +575,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None
             )
         );
@@ -556,6 +592,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None
             )
         );
@@ -580,6 +617,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -604,6 +642,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );
@@ -635,6 +674,7 @@ mod tests {
                 &vote_state,
                 &StakeHistory::default(),
                 null_tracer(),
+                true,
                 None,
             )
         );

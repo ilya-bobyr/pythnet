@@ -337,6 +337,7 @@ impl Bank {
         reward_calc_tracer: Option<impl RewardCalcTracer>,
         metrics: &mut RewardsMetrics,
     ) -> (VoteRewardsAccounts, StakeRewardCalculation) {
+        let credits_auto_rewind = self.credits_auto_rewind();
         let EpochRewardCalculateParamInfo {
             stake_history,
             stake_delegations,
@@ -394,6 +395,7 @@ impl Bank {
                         &point_value,
                         stake_history,
                         reward_calc_tracer.as_ref(),
+                        credits_auto_rewind,
                         new_warmup_cooldown_rate_epoch,
                     );
 

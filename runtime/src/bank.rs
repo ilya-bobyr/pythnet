@@ -2178,6 +2178,7 @@ impl Bank {
             prev_epoch,
             validator_rewards,
             reward_calc_tracer,
+            self.credits_auto_rewind(),
             thread_pool,
             metrics,
         );
@@ -2387,6 +2388,7 @@ impl Bank {
         rewarded_epoch: Epoch,
         rewards: u64,
         reward_calc_tracer: Option<impl RewardCalcTracer>,
+        credits_auto_rewind: bool,
         thread_pool: &ThreadPool,
         metrics: &mut RewardsMetrics,
     ) {
@@ -2407,6 +2409,7 @@ impl Bank {
                 vote_with_stake_delegations_map,
                 rewarded_epoch,
                 point_value,
+                credits_auto_rewind,
                 &stake_history,
                 thread_pool,
                 reward_calc_tracer.as_ref(),
@@ -2505,6 +2508,7 @@ impl Bank {
         vote_with_stake_delegations_map: DashMap<Pubkey, VoteWithStakeDelegations>,
         rewarded_epoch: Epoch,
         point_value: PointValue,
+        credits_auto_rewind: bool,
         stake_history: &StakeHistory,
         thread_pool: &ThreadPool,
         reward_calc_tracer: Option<impl RewardCalcTracer>,
@@ -2557,6 +2561,7 @@ impl Bank {
                         &point_value,
                         stake_history,
                         reward_calc_tracer.as_ref(),
+                        credits_auto_rewind,
                         new_warmup_cooldown_rate_epoch,
                     );
                     if let Ok((stakers_reward, voters_reward)) = redeemed {
@@ -6349,6 +6354,11 @@ impl Bank {
     pub fn validate_fee_collector_account(&self) -> bool {
         self.feature_set
             .is_active(&feature_set::validate_fee_collector_account::id())
+    }
+
+    pub fn credits_auto_rewind(&self) -> bool {
+        self.feature_set
+            .is_active(&feature_set::credits_auto_rewind::id())
     }
 
     pub fn read_cost_tracker(&self) -> LockResult<RwLockReadGuard<CostTracker>> {

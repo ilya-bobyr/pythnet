@@ -204,6 +204,7 @@ fn check_and_filter_proposed_vote_state(
     proposed_root: &mut Option<Slot>,
     proposed_hash: Hash,
     slot_hashes: &[(Slot, Hash)],
+    feature_set: Option<&FeatureSet>,
 ) -> Result<(), VoteError> {
     if proposed_lockouts.is_empty() {
         return Err(VoteError::EmptySlots);
@@ -233,6 +234,9 @@ fn check_and_filter_proposed_vote_state(
         return Err(VoteError::VoteTooOld);
     }
 
+    let is_root_fix_enabled = feature_set
+        .map(|feature_set| feature_set.is_active(&feature_set::vote_state_update_root_fix::id()))
+        .unwrap_or(false);
     // Overwrite the proposed root if it is too old to be in the SlotHash history
     if let Some(root) = *proposed_root {
         // If the new proposed root `R` is less than the earliest slot hash in the history
@@ -243,11 +247,13 @@ fn check_and_filter_proposed_vote_state(
             // First overwrite the proposed root with the vote state's root
             *proposed_root = vote_state.root_slot;
 
-            // Then try to find the latest vote in vote state that's less than R
-            for vote in vote_state.votes.iter().rev() {
-                if vote.slot() <= root {
-                    *proposed_root = Some(vote.slot());
-                    break;
+            if is_root_fix_enabled {
+                // Then try to find the latest vote in vote state that's less than R
+                for vote in vote_state.votes.iter().rev() {
+                    if vote.slot() <= root {
+                        *proposed_root = Some(vote.slot());
+                        break;
+                    }
                 }
             }
         }
@@ -316,15 +322,22 @@ fn check_and_filter_proposed_vote_state(
                         proposed_lockouts_indices_to_filter.push(proposed_lockouts_index);
                     }
                     if let Some(new_proposed_root) = root_to_check {
-                        // 1. Because `root_to_check.is_some()`, then we know that
-                        // we haven't checked the root yet in this loop, so
-                        // `proposed_vote_slot` == `new_proposed_root` == `proposed_root`.
-                        assert_eq!(new_proposed_root, proposed_vote_slot);
-                        // 2. We know from the assert earlier in the function that
-                        // `proposed_vote_slot < earliest_slot_hash_in_history`,
-                        // so from 1. we know that `new_proposed_root < earliest_slot_hash_in_history`.
-                        if new_proposed_root >= earliest_slot_hash_in_history {
-                            return Err(VoteError::AssertionFailed);
+                        if is_root_fix_enabled {
+                            // 1. Because `root_to_check.is_some()`, then we know that
+                            // we haven't checked the root yet in this loop, so
+                            // `proposed_vote_slot` == `new_proposed_root` == `vote_state_update.root`.
+                            assert_eq!(new_proposed_root, proposed_vote_slot);
+                            // 2. We know from the assert earlier in the function that
+                            // `proposed_vote_slot < earliest_slot_hash_in_history`,
+                            // so from 1. we know that `new_proposed_root < earliest_slot_hash_in_history`.
+                            if new_proposed_root >= earliest_slot_hash_in_history {
+                                return Err(VoteError::AssertionFailed);
+                            }
+                        } else {
+                            // If the vote state update has a root < earliest_slot_hash_in_history
+                            // then we use the current root. The only case where this can happen
+                            // is if the current root itself is not in slot hashes.
+                            assert!(vote_state.root_slot.unwrap() < earliest_slot_hash_in_history);
                         }
                         root_to_check = None;
                     } else {
@@ -1176,6 +1189,7 @@ pub fn do_process_vote_state_update(
         &mut vote_state_update.root,
         vote_state_update.hash,
         slot_hashes,
+        feature_set,
     )?;
     process_new_vote_state(
         vote_state,
@@ -1226,6 +1240,7 @@ fn do_process_tower_sync(
         &mut tower_sync.root,
         tower_sync.hash,
         slot_hashes,
+        feature_set,
     )?;
     process_new_vote_state(
         vote_state,
@@ -3245,7 +3260,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &empty_slot_hashes
+                &empty_slot_hashes,
+                Some(&FeatureSet::all_enabled()),
             ),
             Err(VoteError::EmptySlots),
         );
@@ -3258,7 +3274,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &empty_slot_hashes
+                &empty_slot_hashes,
+                Some(&FeatureSet::all_enabled()),
             ),
             Err(VoteError::SlotsMismatch),
         );
@@ -3279,7 +3296,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled()),
             ),
             Err(VoteError::VoteTooOld),
         );
@@ -3296,7 +3314,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled()),
             ),
             Err(VoteError::VoteTooOld),
         );
@@ -3353,6 +3372,7 @@ mod tests {
             &mut tower_sync.root,
             tower_sync.hash,
             &slot_hashes,
+            Some(&FeatureSet::all_enabled()),
         )
         .unwrap();
         assert_eq!(tower_sync.root, expected_root);
@@ -3524,7 +3544,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled())
             ),
             Err(VoteError::SlotsNotOrdered),
         );
@@ -3538,7 +3559,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled()),
             ),
             Err(VoteError::SlotsNotOrdered),
         );
@@ -3574,6 +3596,7 @@ mod tests {
             &mut tower_sync.root,
             tower_sync.hash,
             &slot_hashes,
+            Some(&FeatureSet::all_enabled()),
         )
         .unwrap();
 
@@ -3627,6 +3650,7 @@ mod tests {
             &mut tower_sync.root,
             tower_sync.hash,
             &slot_hashes,
+            Some(&FeatureSet::all_enabled()),
         )
         .unwrap();
         // Check the earlier slot was *NOT* filtered out
@@ -3694,6 +3718,7 @@ mod tests {
             &mut tower_sync.root,
             tower_sync.hash,
             &slot_hashes,
+            Some(&FeatureSet::all_enabled()),
         )
         .unwrap();
         assert_eq!(tower_sync.lockouts.len(), 3);
@@ -3748,7 +3773,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled())
             ),
             Err(VoteError::SlotsMismatch),
         );
@@ -3769,7 +3795,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled())
             ),
             Err(VoteError::SlotsMismatch),
         );
@@ -3805,7 +3832,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled())
             ),
             Err(VoteError::RootOnDifferentFork),
         );
@@ -3831,7 +3859,8 @@ mod tests {
                 &mut tower_sync.lockouts,
                 &mut tower_sync.root,
                 tower_sync.hash,
-                &slot_hashes
+                &slot_hashes,
+                Some(&FeatureSet::all_enabled())
             ),
             Err(VoteError::SlotsMismatch),
         );
@@ -3861,6 +3890,7 @@ mod tests {
             &mut tower_sync.root,
             tower_sync.hash,
             &slot_hashes,
+            Some(&FeatureSet::all_enabled()),
         )
         .unwrap();
 
@@ -3914,6 +3944,7 @@ mod tests {
             &mut tower_sync.root,
             tower_sync.hash,
             &slot_hashes,
+            Some(&FeatureSet::all_enabled()),
         )
         .unwrap();
 
@@ -3966,6 +3997,7 @@ mod tests {
                 &mut tower_sync.root,
                 tower_sync.hash,
                 &slot_hashes,
+                Some(&FeatureSet::all_enabled())
             ),
             Err(VoteError::SlotHashMismatch),
         );

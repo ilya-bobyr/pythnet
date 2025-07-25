@@ -8,7 +8,7 @@ mod tests {
             epoch_stakes::{
                 EpochAuthorizedVoters, EpochStakes, NodeIdToVoteAccounts, VersionedEpochStakes,
             },
-            genesis_utils::activate_all_features,
+            genesis_utils::{activate_all_features, activate_feature},
             runtime_config::RuntimeConfig,
             serde_snapshot::{
                 self, BankIncrementalSnapshotPersistence, SerdeAccountsHash,
@@ -33,8 +33,8 @@ mod tests {
             epoch_accounts_hash::EpochAccountsHash,
         },
         solana_sdk::{
-            epoch_schedule::EpochSchedule, genesis_config::create_genesis_config, hash::Hash,
-            pubkey::Pubkey, stake::state::Stake,
+            epoch_schedule::EpochSchedule, feature_set, genesis_config::create_genesis_config,
+            hash::Hash, pubkey::Pubkey, stake::state::Stake,
         },
         std::{
             collections::HashMap,
@@ -107,6 +107,7 @@ mod tests {
         has_epoch_accounts_hash: bool,
     ) {
         let (mut genesis_config, _) = create_genesis_config(500);
+        activate_feature(&mut genesis_config, feature_set::epoch_accounts_hash::id());
         genesis_config.epoch_schedule = EpochSchedule::custom(400, 400, false);
         let bank0 = Arc::new(Bank::new_for_tests(&genesis_config));
         let deposit_amount = bank0.get_minimum_balance_for_rent_exemption(0);

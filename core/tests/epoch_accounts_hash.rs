@@ -32,6 +32,7 @@ use {
     solana_sdk::{
         clock::Slot,
         epoch_schedule::EpochSchedule,
+        feature_set,
         native_token::LAMPORTS_PER_SOL,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
@@ -142,6 +143,9 @@ impl TestEnvironment {
             Arc::clone(&bank_forks),
         );
         let bank = bank_forks.read().unwrap().working_bank();
+        assert!(bank
+            .feature_set
+            .is_active(&feature_set::epoch_accounts_hash::id()));
         assert!(epoch_accounts_hash_utils::is_enabled_this_epoch(&bank));
 
         bank.set_startup_verification_complete();

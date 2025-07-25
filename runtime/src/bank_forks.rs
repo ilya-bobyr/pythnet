@@ -15,6 +15,7 @@ use {
     solana_program_runtime::loaded_programs::{BlockRelation, ForkGraph},
     solana_sdk::{
         clock::{Epoch, Slot},
+        feature_set,
         hash::Hash,
         timing,
     },
@@ -688,6 +689,13 @@ impl BankForks {
     /// Determine if this bank should request an epoch accounts hash
     #[must_use]
     fn should_request_epoch_accounts_hash(&self, bank: &Bank) -> bool {
+        if !bank
+            .feature_set
+            .is_active(&feature_set::epoch_accounts_hash::id())
+        {
+            return false;
+        }
+
         if !epoch_accounts_hash_utils::is_enabled_this_epoch(bank) {
             return false;
         }

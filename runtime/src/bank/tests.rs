@@ -4741,18 +4741,17 @@ fn test_hash_internal_state_unchanged() {
 }
 
 #[test]
-fn test_hash_internal_state_unchanged_with_ticks() {
+fn test_ticks_change_state() {
     let (genesis_config, _) = create_genesis_config(500);
     let bank = Arc::new(Bank::new_for_tests(&genesis_config));
     let bank1 = new_from_parent(bank);
     let hash1 = bank1.hash_internal_state();
-    // ticks don't change its state even if a slot boundary is crossed
-    // because blockhashes are only recorded at block boundaries
+    // ticks don't change its state unless a block boundary is crossed
     for _ in 0..genesis_config.ticks_per_slot {
         assert_eq!(bank1.hash_internal_state(), hash1);
         bank1.register_default_tick_for_test();
     }
-    assert_eq!(bank1.hash_internal_state(), hash1);
+    assert_ne!(bank1.hash_internal_state(), hash1);
 }
 
 #[ignore]

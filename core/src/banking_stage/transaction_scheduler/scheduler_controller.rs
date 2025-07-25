@@ -31,6 +31,7 @@ use {
         self,
         address_lookup_table::state::estimate_last_valid_slot,
         clock::{Epoch, Slot, FORWARD_TRANSACTIONS_TO_LEADER_AT_SLOT_OFFSET, MAX_PROCESSING_AGE},
+        feature_set::use_default_units_in_fee_calculation,
         fee::FeeBudgetLimits,
         saturating_add_assign,
         transaction::SanitizedTransaction,
@@ -507,6 +508,9 @@ impl SchedulerController {
         let sanitized_epoch = root_bank.epoch();
         let transaction_account_lock_limit = working_bank.get_transaction_account_lock_limit();
         let vote_only = working_bank.vote_only_bank();
+        let default_units_per_instruction = working_bank
+            .feature_set
+            .is_active(&use_default_units_in_fee_calculation::id());
 
         const CHUNK_SIZE: usize = 128;
         let lock_results: [_; CHUNK_SIZE] = core::array::from_fn(|_| Ok(()));
@@ -540,11 +544,12 @@ impl SchedulerController {
                     .is_ok()
                 })
                 .filter_map(|(packet, tx, deactivation_slot)| {
-                    process_compute_budget_instructions(tx.message().program_instructions_iter())
-                        .map(|compute_budget| {
-                            (packet, tx, deactivation_slot, compute_budget.into())
-                        })
-                        .ok()
+                    process_compute_budget_instructions(
+                        tx.message().program_instructions_iter(),
+                        default_units_per_instruction,
+                    )
+                    .map(|compute_budget| (packet, tx, deactivation_slot, compute_budget.into()))
+                    .ok()
                 })
                 .for_each(|(packet, tx, deactivation_slot, fee_budget_limits)| {
                     arc_packets.push(packet);

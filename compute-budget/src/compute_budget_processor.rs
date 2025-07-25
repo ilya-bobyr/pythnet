@@ -68,6 +68,7 @@ impl From<ComputeBudgetLimits> for FeeBudgetLimits {
 /// are retrieved and returned,
 pub fn process_compute_budget_instructions<'a>(
     instructions: impl Iterator<Item = (&'a Pubkey, &'a CompiledInstruction)>,
+    default_units_per_instruction: bool,
 ) -> Result<ComputeBudgetLimits, TransactionError> {
     let mut num_non_compute_budget_instructions: u32 = 0;
     let mut updated_compute_unit_limit = None;
@@ -128,8 +129,12 @@ pub fn process_compute_budget_instructions<'a>(
 
     let compute_unit_limit = updated_compute_unit_limit
         .unwrap_or_else(|| {
-            num_non_compute_budget_instructions
-                .saturating_mul(DEFAULT_INSTRUCTION_COMPUTE_UNIT_LIMIT)
+            if default_units_per_instruction {
+                num_non_compute_budget_instructions
+                    .saturating_mul(DEFAULT_INSTRUCTION_COMPUTE_UNIT_LIMIT)
+            } else {
+                MAX_COMPUTE_UNIT_LIMIT
+            }
         })
         .min(MAX_COMPUTE_UNIT_LIMIT);
 
@@ -176,7 +181,7 @@ mod tests {
                 Hash::default(),
             ));
             let result =
-                process_compute_budget_instructions(tx.message().program_instructions_iter());
+                process_compute_budget_instructions(tx.message().program_instructions_iter(), true);
             assert_eq!($expected_result, result);
         };
     }
@@ -483,8 +488,10 @@ mod tests {
                 Hash::default(),
             ));
 
-        let result =
-            process_compute_budget_instructions(transaction.message().program_instructions_iter());
+        let result = process_compute_budget_instructions(
+            transaction.message().program_instructions_iter(),
+            true,
+        );
 
         // assert process_instructions will be successful with default,
         // and the default compute_unit_limit is 2 times default: one for bpf ix, one for

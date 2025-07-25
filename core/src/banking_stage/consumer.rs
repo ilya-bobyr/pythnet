@@ -751,8 +751,12 @@ impl Consumer {
         error_counters: &mut TransactionErrorMetrics,
     ) -> Result<(), TransactionError> {
         let fee_payer = message.fee_payer();
-        let budget_limits =
-            process_compute_budget_instructions(message.program_instructions_iter())?.into();
+        let budget_limits = process_compute_budget_instructions(
+            message.program_instructions_iter(),
+            bank.feature_set
+                .is_active(&feature_set::use_default_units_in_fee_calculation::id()),
+        )?
+        .into();
         let fee = bank.fee_structure().calculate_fee(
             message,
             bank.get_lamports_per_signature(),

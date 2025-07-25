@@ -40,7 +40,7 @@ use {
         clock::{Epoch, Slot},
         feature_set::{
             include_loaded_accounts_data_size_in_fee_calculation,
-            remove_rounding_in_fee_calculation, FeatureSet,
+            remove_rounding_in_fee_calculation, use_default_units_in_fee_calculation, FeatureSet,
         },
         fee::{FeeBudgetLimits, FeeStructure},
         hash::Hash,
@@ -429,6 +429,7 @@ impl<FG: ForkGraph> TransactionBatchProcessor<FG> {
     ) -> transaction::Result<ValidatedTransactionDetails> {
         let compute_budget_limits = process_compute_budget_instructions(
             message.program_instructions_iter(),
+            feature_set.is_active(&use_default_units_in_fee_calculation::id()),
         )
         .map_err(|err| {
             error_counters.invalid_compute_budget += 1;
@@ -1981,7 +1982,7 @@ mod tests {
             &Hash::new_unique(),
         ));
         let compute_budget_limits =
-            process_compute_budget_instructions(message.program_instructions_iter()).unwrap();
+            process_compute_budget_instructions(message.program_instructions_iter(), true).unwrap();
         let fee_payer_address = message.fee_payer();
         let current_epoch = 42;
         let rent_collector = RentCollector {
@@ -2055,6 +2056,12 @@ mod tests {
 
     #[test]
     fn test_validate_transaction_fee_payer_rent_paying() {
+        let feature_set = {
+            let mut feature_set = FeatureSet::default();
+            feature_set.activate(&use_default_units_in_fee_calculation::id(), 1);
+            feature_set
+        };
+
         let lamports_per_signature = 5000;
         let message = new_unchecked_sanitized_message(Message::new_with_blockhash(
             &[],
@@ -2062,7 +2069,7 @@ mod tests {
             &Hash::new_unique(),
         ));
         let compute_budget_limits =
-            process_compute_budget_instructions(message.program_instructions_iter()).unwrap();
+            process_compute_budget_instructions(message.program_instructions_iter(), true).unwrap();
         let fee_payer_address = message.fee_payer();
         let mut rent_collector = RentCollector::default();
         rent_collector.rent.lamports_per_byte_year = 1_000_000;
@@ -2095,7 +2102,7 @@ mod tests {
                 nonce: None,
                 lamports_per_signature,
             },
-            &FeatureSet::default(),
+            &feature_set,
             &FeeStructure::default(),
             &rent_collector,
             &mut error_counters,
@@ -2305,7 +2312,7 @@ mod tests {
             &Hash::new_unique(),
         ));
         let compute_budget_limits =
-            process_compute_budget_instructions(message.program_instructions_iter()).unwrap();
+            process_compute_budget_instructions(message.program_instructions_iter(), true).unwrap();
         let fee_payer_address = message.fee_payer();
         let min_balance = Rent::default().minimum_balance(nonce::State::size());
         let transaction_fee = lamports_per_signature;

@@ -71,6 +71,7 @@ impl RuntimeTransaction<SanitizedVersionedMessage> {
         sanitized_versioned_tx: SanitizedVersionedTransaction,
         message_hash: Option<Hash>,
         is_simple_vote_tx: Option<bool>,
+        default_units_per_instruction: bool,
     ) -> Result<Self> {
         let mut meta = TransactionMeta::default();
         meta.set_is_simple_vote_tx(
@@ -86,7 +87,10 @@ impl RuntimeTransaction<SanitizedVersionedMessage> {
             compute_unit_price,
             loaded_accounts_bytes,
             ..
-        } = process_compute_budget_instructions(message.program_instructions_iter())?;
+        } = process_compute_budget_instructions(
+            message.program_instructions_iter(),
+            default_units_per_instruction,
+        )?;
         meta.set_compute_unit_limit(compute_unit_limit);
         meta.set_compute_unit_price(compute_unit_price);
         meta.set_loaded_accounts_bytes(loaded_accounts_bytes);
@@ -216,10 +220,15 @@ mod tests {
             svt: SanitizedVersionedTransaction,
             is_simple_vote: Option<bool>,
         ) -> bool {
-            RuntimeTransaction::<SanitizedVersionedMessage>::try_from(svt, None, is_simple_vote)
-                .unwrap()
-                .meta
-                .is_simple_vote_tx
+            RuntimeTransaction::<SanitizedVersionedMessage>::try_from(
+                svt,
+                None,
+                is_simple_vote,
+                true,
+            )
+            .unwrap()
+            .meta
+            .is_simple_vote_tx
         }
 
         assert!(!get_is_simple_vote(
@@ -252,6 +261,7 @@ mod tests {
                 non_vote_sanitized_versioned_transaction(),
                 Some(hash),
                 None,
+                true,
             )
             .unwrap();
 
@@ -286,6 +296,7 @@ mod tests {
                 .to_sanitized_versioned_transaction(),
             Some(hash),
             None,
+            true,
         )
         .unwrap();
 

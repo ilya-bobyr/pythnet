@@ -23,7 +23,11 @@ pub trait GetComputeBudgetDetails {
         instructions: impl Iterator<Item = (&'a Pubkey, &'a CompiledInstruction)>,
         _round_compute_unit_price_enabled: bool,
     ) -> Option<ComputeBudgetDetails> {
-        let compute_budget_limits = process_compute_budget_instructions(instructions).ok()?;
+        let compute_budget_limits = process_compute_budget_instructions(
+            instructions,
+            true, // use default units per instruction
+        )
+        .ok()?;
         Some(ComputeBudgetDetails {
             compute_unit_price: compute_budget_limits.compute_unit_price,
             compute_unit_limit: u64::from(compute_budget_limits.compute_unit_limit),

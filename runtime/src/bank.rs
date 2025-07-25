@@ -118,7 +118,8 @@ use {
         feature,
         feature_set::{
             self, include_loaded_accounts_data_size_in_fee_calculation,
-            remove_rounding_in_fee_calculation, reward_full_priority_fee, FeatureSet,
+            remove_rounding_in_fee_calculation, reward_full_priority_fee,
+            use_default_units_in_fee_calculation, FeatureSet,
         },
         fee::{FeeDetails, FeeStructure},
         fee_calculator::FeeRateGovernor,
@@ -3095,9 +3096,13 @@ impl Bank {
         self.fee_structure().calculate_fee(
             message,
             lamports_per_signature,
-            &process_compute_budget_instructions(message.program_instructions_iter())
-                .unwrap_or_default()
-                .into(),
+            &process_compute_budget_instructions(
+                message.program_instructions_iter(),
+                self.feature_set
+                    .is_active(&use_default_units_in_fee_calculation::id()),
+            )
+            .unwrap_or_default()
+            .into(),
             self.feature_set
                 .is_active(&include_loaded_accounts_data_size_in_fee_calculation::id()),
             self.feature_set

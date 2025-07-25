@@ -12,7 +12,7 @@ use {
     solana_program_runtime::loaded_programs::ProgramCacheForTxBatch,
     solana_sdk::{
         account::{Account, AccountSharedData, ReadableAccount, WritableAccount},
-        feature_set::{self, FeatureSet},
+        feature_set::{self, use_default_units_in_fee_calculation, FeatureSet},
         fee::FeeDetails,
         message::SanitizedMessage,
         native_loader,
@@ -205,8 +205,10 @@ fn load_transaction_accounts<CB: TransactionProcessingCallback>(
     let mut accounts_found = Vec::with_capacity(account_keys.len());
     let mut rent_debits = RentDebits::default();
 
-    let requested_loaded_accounts_data_size_limit =
-        get_requested_loaded_accounts_data_size_limit(message)?;
+    let requested_loaded_accounts_data_size_limit = get_requested_loaded_accounts_data_size_limit(
+        message,
+        feature_set.is_active(&use_default_units_in_fee_calculation::id()),
+    )?;
     let mut accumulated_accounts_data_size: usize = 0;
 
     let disable_account_loader_special_case =
@@ -381,10 +383,13 @@ fn load_transaction_accounts<CB: TransactionProcessingCallback>(
 ///     Note, requesting zero bytes will result transaction error
 fn get_requested_loaded_accounts_data_size_limit(
     sanitized_message: &SanitizedMessage,
+    default_units_per_instruction: bool,
 ) -> Result<Option<NonZeroUsize>> {
-    let compute_budget_limits =
-        process_compute_budget_instructions(sanitized_message.program_instructions_iter())
-            .unwrap_or_default();
+    let compute_budget_limits = process_compute_budget_instructions(
+        sanitized_message.program_instructions_iter(),
+        default_units_per_instruction,
+    )
+    .unwrap_or_default();
     // sanitize against setting size limit to zero
     NonZeroUsize::new(
         usize::try_from(compute_budget_limits.loaded_accounts_bytes).unwrap_or_default(),
@@ -924,7 +929,7 @@ mod tests {
             ));
             assert_eq!(
                 *expected_result,
-                get_requested_loaded_accounts_data_size_limit(tx.message())
+                get_requested_loaded_accounts_data_size_limit(tx.message(), true)
             );
         }
 

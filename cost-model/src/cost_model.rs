@@ -15,7 +15,7 @@ use {
     solana_sdk::{
         borsh1::try_from_slice_unchecked,
         compute_budget::{self, ComputeBudgetInstruction},
-        feature_set::{self, FeatureSet},
+        feature_set::{self, use_default_units_in_fee_calculation, FeatureSet},
         fee::FeeStructure,
         instruction::CompiledInstruction,
         program_utils::limited_deserialize,
@@ -196,8 +196,10 @@ impl CostModel {
 
         // if failed to process compute_budget instructions, the transaction will not be executed
         // by `bank`, therefore it should be considered as no execution cost by cost model.
-        match process_compute_budget_instructions(transaction.message().program_instructions_iter())
-        {
+        match process_compute_budget_instructions(
+            transaction.message().program_instructions_iter(),
+            feature_set.is_active(&use_default_units_in_fee_calculation::id()),
+        ) {
             Ok(compute_budget_limits) => {
                 // if tx contained user-space instructions and a more accurate estimate available correct it,
                 // where "user-space instructions" must be specifically checked by

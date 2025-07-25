@@ -3885,7 +3885,7 @@ fn test_program_fees() {
     let expected_normal_fee = fee_structure.calculate_fee(
         &sanitized_message,
         congestion_multiplier,
-        &process_compute_budget_instructions(sanitized_message.program_instructions_iter())
+        &process_compute_budget_instructions(sanitized_message.program_instructions_iter(), true)
             .unwrap_or_default()
             .into(),
         false,
@@ -3913,7 +3913,7 @@ fn test_program_fees() {
     let expected_prioritized_fee = fee_structure.calculate_fee(
         &sanitized_message,
         congestion_multiplier,
-        &process_compute_budget_instructions(sanitized_message.program_instructions_iter())
+        &process_compute_budget_instructions(sanitized_message.program_instructions_iter(), true)
             .unwrap_or_default()
             .into(),
         false,
